@@ -1,7 +1,10 @@
+import type { AuditProvenanceStore } from './auditProvenance'
 import type { AuthorizationClaimStore } from './authorizationClaims'
 import {
   allRequiredChecksPassed,
+  normalizedResourceList,
   proposalFingerprint,
+  verificationFingerprint,
   type AuthorizationArtifact,
   type IncidentStage,
   type IncidentState,
@@ -28,13 +31,9 @@ export class IncidentTransitionError extends Error {
   }
 }
 
-function normalizedResources(resources: readonly string[]): string[] {
-  return [...new Set(resources)].sort()
-}
-
 function exactResourceMatch(left: readonly string[], right: readonly string[]): boolean {
-  const a = normalizedResources(left)
-  const b = normalizedResources(right)
+  const a = normalizedResourceList(left)
+  const b = normalizedResourceList(right)
   return a.length === b.length && a.every((resource, index) => resource === b[index])
 }
 
@@ -122,8 +121,37 @@ function assertExecutionMatchesApproval(current: IncidentState): void {
   }
 }
 
+function auditBindingFingerprint(current: IncidentState, recordedAt: string): string {
+  const authorization = current.authorization
+  const proposal = current.proposal
+  const execution = current.execution
+
+  if (!authorization || !proposal || !execution) {
+    throw new IncidentTransitionError('Audit provenance requires authorization, proposal, and execution state.')
+  }
+
+  return JSON.stringify({
+    incidentId: current.id,
+    authorizationId: authorization.id,
+    proposalFingerprint: proposalFingerprint(proposal),
+    execution: {
+      actionId: execution.actionId,
+      actionType: execution.actionType,
+      proposalFingerprint: execution.proposalFingerprint,
+      resources: normalizedResourceList(execution.resources),
+      appliedAt: execution.appliedAt,
+      success: execution.success,
+    },
+    verificationFingerprint: verificationFingerprint(current.verification),
+    recordedAt,
+  })
+}
+
 export class IncidentLifecycle {
-  constructor(private readonly authorizationClaims: AuthorizationClaimStore) {}
+  constructor(
+    private readonly authorizationClaims: AuthorizationClaimStore,
+    private readonly auditProvenance: AuditProvenanceStore,
+  ) {}
 
   async transition(current: IncidentState, nextStage: IncidentStage): Promise<IncidentState> {
     if (!ALLOWED_TRANSITIONS[current.stage].includes(nextStage)) {
@@ -154,24 +182,70 @@ export class IncidentLifecycle {
     }
 
     if (nextStage === 'audit') {
-      // Reassert the execution/approval binding at the audit boundary instead of
-      // trusting that a caller reached `verify` through this lifecycle instance.
-      // This keeps fabricated or replayed verify-state snapshots fail closed.
       assertExecutionMatchesApproval(current)
 
       if (!allRequiredChecksPassed(current.verification)) {
         throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes with evidence.')
       }
 
+      const recordedAt = new Date(Date.now()).toISOString()
+      const fingerprint = auditBindingFingerprint(current, recordedAt)
+      const provenanceToken = await this.auditProvenance.issue(fingerprint)
+
       return {
         ...current,
         stage: 'audit',
-        auditRecordedAt: new Date(Date.now()).toISOString(),
+        audit: {
+          provenanceToken,
+          incidentId: current.id,
+          authorizationId: current.authorization!.id,
+          proposalFingerprint: proposalFingerprint(current.proposal!),
+          verificationFingerprint: verificationFingerprint(current.verification),
+          recordedAt,
+        },
       }
     }
 
-    if (nextStage === 'resolved' && !current.auditRecordedAt) {
-      throw new IncidentTransitionError('Resolution requires a recorded audit trail.')
+    if (nextStage === 'resolved') {
+      assertExecutionMatchesApproval(current)
+
+      if (!allRequiredChecksPassed(current.verification)) {
+        throw new IncidentTransitionError('Resolution requires evidence-backed recovery checks to remain valid.')
+      }
+
+      const audit = current.audit
+      const authorization = current.authorization
+      const proposal = current.proposal
+      const execution = current.execution
+
+      if (!audit || !authorization || !proposal || !execution) {
+        throw new IncidentTransitionError('Resolution requires a lifecycle-issued audit record.')
+      }
+
+      const auditTime = parseTime(audit.recordedAt, 'audit.recordedAt')
+      const appliedAt = parseTime(execution.appliedAt, 'execution.appliedAt')
+      const expectedProposalFingerprint = proposalFingerprint(proposal)
+      const expectedVerificationFingerprint = verificationFingerprint(current.verification)
+
+      if (auditTime < appliedAt) {
+        throw new IncidentTransitionError('Audit record cannot predate the approved execution.')
+      }
+
+      if (
+        audit.incidentId !== current.id ||
+        audit.authorizationId !== authorization.id ||
+        audit.proposalFingerprint !== expectedProposalFingerprint ||
+        audit.verificationFingerprint !== expectedVerificationFingerprint
+      ) {
+        throw new IncidentTransitionError('Audit record does not match the current verified incident state.')
+      }
+
+      const fingerprint = auditBindingFingerprint(current, audit.recordedAt)
+      const provenanceValid = await this.auditProvenance.verify(audit.provenanceToken, fingerprint)
+
+      if (!provenanceValid) {
+        throw new IncidentTransitionError('Audit record provenance is invalid or was not issued by ROOK.')
+      }
     }
 
     return { ...current, stage: nextStage }

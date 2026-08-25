@@ -59,6 +59,15 @@ export type VerificationCheck =
   | (VerificationCheckBase & { status: 'failed'; evidence: string })
   | (VerificationCheckBase & { status: 'passed'; evidence: string })
 
+export interface AuditRecord {
+  provenanceToken: string
+  incidentId: string
+  authorizationId: string
+  proposalFingerprint: string
+  verificationFingerprint: string
+  recordedAt: string
+}
+
 export interface IncidentState {
   id: string
   stage: IncidentStage
@@ -66,10 +75,10 @@ export interface IncidentState {
   authorization?: AuthorizationArtifact
   execution?: ExecutionRecord
   verification: readonly VerificationCheck[]
-  auditRecordedAt?: string
+  audit?: AuditRecord
 }
 
-function normalizedResourceList(resources: readonly string[]): string[] {
+export function normalizedResourceList(resources: readonly string[]): string[] {
   return [...new Set(resources)].sort()
 }
 
@@ -88,6 +97,21 @@ export function proposalFingerprint(proposal: ProposedAction): string {
     expectedResult: proposal.expectedResult,
     rollbackPlan: proposal.rollbackPlan,
   })
+}
+
+/** Canonical binding for recovery checks and their evidence. */
+export function verificationFingerprint(checks: readonly VerificationCheck[]): string {
+  return JSON.stringify(
+    [...checks]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((check) => ({
+        id: check.id,
+        label: check.label,
+        required: check.required,
+        status: check.status,
+        evidence: 'evidence' in check ? check.evidence : null,
+      })),
+  )
 }
 
 export function allRequiredChecksPassed(checks: readonly VerificationCheck[]): boolean {
