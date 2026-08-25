@@ -1,0 +1,55 @@
+.rook-type-hero {
+  font: 700 3.5rem/3.75rem var(--rook-font-display);
+  letter-spacing: -0.03em;
+}
+
+.rook-type-display {
+  font: 600 2.5rem/3rem var(--rook-font-display);
+  letter-spacing: -0.025em;
+}
+
+.rook-type-h1 {
+  font: 600 2rem/2.5rem var(--rook-font-display);
+  letter-spacing: -0.02em;
+}
+
+.rook-type-h2 {
+  font: 600 1.5rem/2rem var(--rook-font-display);
+  letter-spacing: -0.015em;
+}
+
+.rook-type-h3 {
+  font: 600 1.25rem/1.75rem var(--rook-font-display);
+  letter-spacing: -0.01em;
+}
+
+.rook-type-card-title {
+  font: 600 1rem/1.5rem var(--rook-font-display);
+}
+
+.rook-type-body-lg {
+  font: 400 1rem/1.625rem var(--rook-font-ui);
+}
+
+.rook-type-body {
+  font: 400 0.875rem/1.375rem var(--rook-font-ui);
+}
+
+.rook-type-body-sm {
+  font: 400 0.8125rem/1.25rem var(--rook-font-ui);
+}
+
+.rook-type-label {
+  font: 600 0.75rem/1rem var(--rook-font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rook-type-caption {
+  font: 400 0.75rem/1.125rem var(--rook-font-ui);
+  letter-spacing: 0.01em;
+}
+
+.rook-type-telemetry {
+  font: 400 0.8125rem/1.25rem var(--rook-font-mono);
+}
