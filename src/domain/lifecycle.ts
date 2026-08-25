@@ -90,6 +90,38 @@ export function validateAuthorization(
   return authorization
 }
 
+function assertExecutionMatchesApproval(current: IncidentState): void {
+  const execution = current.execution
+  const authorization = current.authorization
+  const proposal = current.proposal
+
+  if (!execution?.success || !execution.appliedAt) {
+    throw new IncidentTransitionError('Verification requires a recorded successful execution attempt.')
+  }
+  if (!authorization || authorization.status !== 'consumed') {
+    throw new IncidentTransitionError('Verification requires the consumed authorization used for execution.')
+  }
+  if (!proposal) {
+    throw new IncidentTransitionError('Verification requires the approved proposal used for execution.')
+  }
+
+  const matchesAuthorization =
+    execution.actionId === authorization.actionId &&
+    execution.actionType === authorization.actionType &&
+    execution.proposalFingerprint === authorization.proposalFingerprint &&
+    exactResourceMatch(execution.resources, authorization.resources)
+
+  const matchesProposal =
+    execution.actionId === proposal.id &&
+    execution.actionType === proposal.type &&
+    execution.proposalFingerprint === proposalFingerprint(proposal) &&
+    exactResourceMatch(execution.resources, proposal.resources)
+
+  if (!matchesAuthorization || !matchesProposal) {
+    throw new IncidentTransitionError('Verification execution does not match the exact approved remediation.')
+  }
+}
+
 export class IncidentLifecycle {
   constructor(private readonly authorizationClaims: AuthorizationClaimStore) {}
 
@@ -118,9 +150,7 @@ export class IncidentLifecycle {
     }
 
     if (nextStage === 'verify') {
-      if (!current.execution?.success || !current.execution.appliedAt) {
-        throw new IncidentTransitionError('Verification requires a recorded successful execution attempt.')
-      }
+      assertExecutionMatchesApproval(current)
     }
 
     if (nextStage === 'audit' && !allRequiredChecksPassed(current.verification)) {
