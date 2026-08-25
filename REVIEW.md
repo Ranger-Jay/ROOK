@@ -61,6 +61,21 @@ For changes to incident lifecycle, authorization, remediation, or verification l
 - specifically look for boundary conditions around timestamps, resource matching, one-time authorization, retries, duplicate events, and state transitions;
 - prefer explicit domain invariants over UI-only guards.
 
+## Lesson-to-guardrail expectation
+
+ROOK doctrine requires that legitimate lessons become durable guardrails rather than remain review commentary alone.
+
+When reporting a repeatable failure mode, identify the most appropriate permanent protection when practical:
+
+- invariant or validation;
+- safer abstraction or trust boundary;
+- regression test;
+- CI/static check;
+- repository/process gate;
+- doctrine update when the lesson changes an architectural or safety rule.
+
+A valid finding should not be considered fully resolved if the same class of defect can silently recur. Conversely, if a finding is a false positive, do not recommend an unnecessary workaround merely to make the review quiet; prefer an evidence-backed dismissal.
+
 ## Review quality
 
 - Do not lower severity merely because this is a hackathon project when the issue affects the approval or safety boundary.
