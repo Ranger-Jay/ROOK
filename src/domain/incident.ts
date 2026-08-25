@@ -46,13 +46,16 @@ export interface ExecutionRecord {
   success: boolean
 }
 
-export interface VerificationCheck {
+interface VerificationCheckBase {
   id: string
   label: string
   required: boolean
-  status: CheckStatus
-  evidence?: string
 }
+
+export type VerificationCheck =
+  | (VerificationCheckBase & { status: 'pending'; evidence?: never })
+  | (VerificationCheckBase & { status: 'failed'; evidence: string })
+  | (VerificationCheckBase & { status: 'passed'; evidence: string })
 
 export interface IncidentState {
   id: string
@@ -87,5 +90,8 @@ export function proposalFingerprint(proposal: ProposedAction): string {
 
 export function allRequiredChecksPassed(checks: readonly VerificationCheck[]): boolean {
   const required = checks.filter((check) => check.required)
-  return required.length > 0 && required.every((check) => check.status === 'passed')
+  return (
+    required.length > 0 &&
+    required.every((check) => check.status === 'passed' && check.evidence.trim().length > 0)
+  )
 }
