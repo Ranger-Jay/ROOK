@@ -153,8 +153,16 @@ export class IncidentLifecycle {
       assertExecutionMatchesApproval(current)
     }
 
-    if (nextStage === 'audit' && !allRequiredChecksPassed(current.verification)) {
-      throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes.')
+    if (nextStage === 'audit') {
+      if (!allRequiredChecksPassed(current.verification)) {
+        throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes with evidence.')
+      }
+
+      return {
+        ...current,
+        stage: 'audit',
+        auditRecordedAt: new Date(Date.now()).toISOString(),
+      }
     }
 
     if (nextStage === 'resolved' && !current.auditRecordedAt) {
