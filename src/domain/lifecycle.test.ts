@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { InMemoryAuditProvenanceStore } from './auditProvenance'
 import { InMemoryAuthorizationClaimStore } from './authorizationClaims'
 import {
   proposalFingerprint,
+  verificationFingerprint,
   type AuthorizationArtifact,
   type ExecutionRecord,
   type IncidentState,
   type ProposedAction,
+  type VerificationCheck,
 } from './incident'
 import { IncidentLifecycle, IncidentTransitionError, validateAuthorization } from './lifecycle'
 
@@ -41,6 +44,23 @@ const execution: ExecutionRecord = {
   success: true,
 }
 
+const passedVerification: VerificationCheck[] = [
+  {
+    id: 'retry-rate',
+    label: 'Retry rate normalized',
+    required: true,
+    status: 'passed',
+    evidence: 'retry.rate=0.7%',
+  },
+  {
+    id: 'checkout-p95',
+    label: 'Checkout p95 restored',
+    required: true,
+    status: 'passed',
+    evidence: 'checkout.p95=218ms',
+  },
+]
+
 const state = (overrides: Partial<IncidentState> = {}): IncidentState => ({
   id: 'INC-2048',
   stage: 'approve',
@@ -53,6 +73,9 @@ const state = (overrides: Partial<IncidentState> = {}): IncidentState => ({
   ...overrides,
 })
 
+const lifecycle = () =>
+  new IncidentLifecycle(new InMemoryAuthorizationClaimStore(), new InMemoryAuditProvenanceStore())
+
 describe('ROOK incident lifecycle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -64,17 +87,14 @@ describe('ROOK incident lifecycle', () => {
   })
 
   it('allows an exactly scoped, current authorization and consumes it for execution', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
-    const next = await lifecycle.transition(state(), 'execute')
+    const next = await lifecycle().transition(state(), 'execute')
 
     expect(next.stage).toBe('execute')
     expect(next.authorization?.status).toBe('consumed')
   })
 
   it('fails closed when authorization is missing', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
-
-    await expect(lifecycle.transition(state({ authorization: undefined }), 'execute')).rejects.toThrow(
+    await expect(lifecycle().transition(state({ authorization: undefined }), 'execute')).rejects.toThrow(
       'Execution requires explicit human authorization.',
     )
   })
@@ -119,28 +139,24 @@ describe('ROOK incident lifecycle', () => {
   })
 
   it('atomically rejects replaying the same authorization against the same claim store', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    const subject = lifecycle()
 
-    await lifecycle.transition(state(), 'execute')
+    await subject.transition(state(), 'execute')
 
-    await expect(lifecycle.transition(state(), 'execute')).rejects.toThrow(
+    await expect(subject.transition(state(), 'execute')).rejects.toThrow(
       'Authorization has already been consumed by another execution attempt.',
     )
   })
 
   it('keeps execution and verification separate', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
-
-    await expect(lifecycle.transition(state({ stage: 'execute' }), 'verify')).rejects.toThrow(
+    await expect(lifecycle().transition(state({ stage: 'execute' }), 'verify')).rejects.toThrow(
       'Verification requires a recorded successful execution attempt.',
     )
   })
 
   it('rejects verification when execution does not match the consumed approval', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
-
     await expect(
-      lifecycle.transition(
+      lifecycle().transition(
         state({
           stage: 'execute',
           authorization: { ...authorization, status: 'consumed' },
@@ -152,9 +168,7 @@ describe('ROOK incident lifecycle', () => {
   })
 
   it('allows verification only for the exact consumed approved execution', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
-
-    const next = await lifecycle.transition(
+    const next = await lifecycle().transition(
       state({
         stage: 'execute',
         authorization: { ...authorization, status: 'consumed' },
@@ -167,19 +181,12 @@ describe('ROOK incident lifecycle', () => {
   })
 
   it('cannot finalize audit when a required recovery check fails', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const verifying = state({
       stage: 'verify',
       authorization: { ...authorization, status: 'consumed' },
       execution,
       verification: [
-        {
-          id: 'retry-rate',
-          label: 'Retry rate normalized',
-          required: true,
-          status: 'passed',
-          evidence: 'retry.rate=0.7%',
-        },
+        passedVerification[0],
         {
           id: 'checkout-p95',
           label: 'Checkout p95 restored',
@@ -190,13 +197,12 @@ describe('ROOK incident lifecycle', () => {
       ],
     })
 
-    await expect(lifecycle.transition(verifying, 'audit')).rejects.toThrow(
+    await expect(lifecycle().transition(verifying, 'audit')).rejects.toThrow(
       'Audit cannot finalize until every required recovery check passes with evidence.',
     )
   })
 
   it('cannot finalize audit when passed evidence is blank', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const verifying = state({
       stage: 'verify',
       authorization: { ...authorization, status: 'consumed' },
@@ -212,100 +218,134 @@ describe('ROOK incident lifecycle', () => {
       ],
     })
 
-    await expect(lifecycle.transition(verifying, 'audit')).rejects.toThrow(
+    await expect(lifecycle().transition(verifying, 'audit')).rejects.toThrow(
       'Audit cannot finalize until every required recovery check passes with evidence.',
     )
   })
 
   it('rejects audit when a fabricated verify state lacks the approved execution record', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const fabricatedVerifyState = state({
       stage: 'verify',
       authorization: { ...authorization, status: 'consumed' },
       execution: undefined,
-      verification: [
-        {
-          id: 'retry-rate',
-          label: 'Retry rate normalized',
-          required: true,
-          status: 'passed',
-          evidence: 'retry.rate=0.7%',
-        },
-        {
-          id: 'checkout-p95',
-          label: 'Checkout p95 restored',
-          required: true,
-          status: 'passed',
-          evidence: 'checkout.p95=218ms',
-        },
-      ],
+      verification: passedVerification,
     })
 
-    await expect(lifecycle.transition(fabricatedVerifyState, 'audit')).rejects.toThrow(
+    await expect(lifecycle().transition(fabricatedVerifyState, 'audit')).rejects.toThrow(
       'Verification requires a recorded successful execution attempt.',
     )
   })
 
   it('rejects audit when the verify state carries an execution that does not match approval', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const mismatchedVerifyState = state({
       stage: 'verify',
       authorization: { ...authorization, status: 'consumed' },
       execution: { ...execution, resources: ['checkout'] },
-      verification: [
-        {
-          id: 'retry-rate',
-          label: 'Retry rate normalized',
-          required: true,
-          status: 'passed',
-          evidence: 'retry.rate=0.7%',
-        },
-      ],
+      verification: passedVerification,
     })
 
-    await expect(lifecycle.transition(mismatchedVerifyState, 'audit')).rejects.toThrow(
+    await expect(lifecycle().transition(mismatchedVerifyState, 'audit')).rejects.toThrow(
       'Verification execution does not match the exact approved remediation.',
     )
   })
 
-  it('records audit completion from the trusted system clock after evidence-backed verification', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+  it('issues an opaque audit provenance record after evidence-backed verification', async () => {
+    const subject = lifecycle()
     vi.setSystemTime(new Date('2026-08-25T03:04:00.000Z'))
 
-    const next = await lifecycle.transition(
+    const next = await subject.transition(
       state({
         stage: 'verify',
         authorization: { ...authorization, status: 'consumed' },
         execution,
-        verification: [
-          {
-            id: 'retry-rate',
-            label: 'Retry rate normalized',
-            required: true,
-            status: 'passed',
-            evidence: 'retry.rate=0.7%',
-          },
-          {
-            id: 'checkout-p95',
-            label: 'Checkout p95 restored',
-            required: true,
-            status: 'passed',
-            evidence: 'checkout.p95=218ms',
-          },
-        ],
+        verification: passedVerification,
       }),
       'audit',
     )
 
     expect(next.stage).toBe('audit')
-    expect(next.auditRecordedAt).toBe('2026-08-25T03:04:00.000Z')
+    expect(next.audit?.recordedAt).toBe('2026-08-25T03:04:00.000Z')
+    expect(next.audit?.provenanceToken).toBeTruthy()
+    expect(next.audit?.verificationFingerprint).toBe(verificationFingerprint(passedVerification))
   })
 
-  it('requires an audit record before resolution', async () => {
-    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+  it('rejects a fabricated audit snapshot even when auditRecordedAt-equivalent data is non-empty and plausible', async () => {
+    const fabricatedAuditState = state({
+      stage: 'audit',
+      authorization: { ...authorization, status: 'consumed' },
+      execution,
+      verification: passedVerification,
+      audit: {
+        provenanceToken: '任意の値',
+        incidentId: 'INC-2048',
+        authorizationId: authorization.id,
+        proposalFingerprint: proposalFingerprint(proposal),
+        verificationFingerprint: verificationFingerprint(passedVerification),
+        recordedAt: '2026-08-25T03:04:00.000Z',
+      },
+    })
 
-    await expect(lifecycle.transition(state({ stage: 'audit' }), 'resolved')).rejects.toThrow(
-      IncidentTransitionError,
+    await expect(lifecycle().transition(fabricatedAuditState, 'resolved')).rejects.toThrow(
+      'Audit record provenance is invalid or was not issued by ROOK.',
     )
+  })
+
+  it('rejects resolution if verification evidence changes after the audit was issued', async () => {
+    const subject = lifecycle()
+    vi.setSystemTime(new Date('2026-08-25T03:04:00.000Z'))
+
+    const audited = await subject.transition(
+      state({
+        stage: 'verify',
+        authorization: { ...authorization, status: 'consumed' },
+        execution,
+        verification: passedVerification,
+      }),
+      'audit',
+    )
+
+    const tampered = {
+      ...audited,
+      verification: [
+        { ...passedVerification[0], evidence: 'retry.rate=99%' },
+        passedVerification[1],
+      ],
+    }
+
+    await expect(subject.transition(tampered, 'resolved')).rejects.toThrow(
+      'Audit record does not match the current verified incident state.',
+    )
+  })
+
+  it('allows resolution only from a lifecycle-issued audit whose bound state remains unchanged', async () => {
+    const subject = lifecycle()
+    vi.setSystemTime(new Date('2026-08-25T03:04:00.000Z'))
+
+    const audited = await subject.transition(
+      state({
+        stage: 'verify',
+        authorization: { ...authorization, status: 'consumed' },
+        execution,
+        verification: passedVerification,
+      }),
+      'audit',
+    )
+    const resolved = await subject.transition(audited, 'resolved')
+
+    expect(resolved.stage).toBe('resolved')
+  })
+
+  it('requires a lifecycle-issued audit record before resolution', async () => {
+    await expect(
+      lifecycle().transition(
+        state({
+          stage: 'audit',
+          authorization: { ...authorization, status: 'consumed' },
+          execution,
+          verification: passedVerification,
+        }),
+        'resolved',
+      ),
+    ).rejects.toThrow(IncidentTransitionError)
   })
 })
