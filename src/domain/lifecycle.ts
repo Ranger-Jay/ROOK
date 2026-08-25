@@ -73,7 +73,10 @@ export function validateAuthorization(
   if (expiresAt <= approvedAt) {
     throw new IncidentTransitionError('Authorization expiry must be later than approval time.')
   }
-  if (currentTime > expiresAt) {
+  if (currentTime < approvedAt) {
+    throw new IncidentTransitionError('Authorization is not valid before its approval time.')
+  }
+  if (currentTime >= expiresAt) {
     throw new IncidentTransitionError('Authorization has expired.')
   }
 
