@@ -3,6 +3,7 @@ import { InMemoryAuthorizationClaimStore } from './authorizationClaims'
 import {
   proposalFingerprint,
   type AuthorizationArtifact,
+  type ExecutionRecord,
   type IncidentState,
   type ProposedAction,
 } from './incident'
@@ -29,6 +30,15 @@ const authorization: AuthorizationArtifact = {
   approvedAt: '2026-08-25T03:00:00.000Z',
   expiresAt: '2026-08-25T03:05:00.000Z',
   status: 'authorized',
+}
+
+const execution: ExecutionRecord = {
+  actionId: proposal.id,
+  actionType: proposal.type,
+  proposalFingerprint: proposalFingerprint(proposal),
+  resources: proposal.resources,
+  appliedAt: '2026-08-25T03:02:30.000Z',
+  success: true,
 }
 
 const state = (overrides: Partial<IncidentState> = {}): IncidentState => ({
@@ -126,25 +136,118 @@ describe('ROOK incident lifecycle', () => {
     )
   })
 
-  it('cannot finalize audit until every required recovery check passes', async () => {
+  it('rejects verification when execution does not match the consumed approval', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    await expect(
+      lifecycle.transition(
+        state({
+          stage: 'execute',
+          authorization: { ...authorization, status: 'consumed' },
+          execution: { ...execution, resources: ['checkout'] },
+        }),
+        'verify',
+      ),
+    ).rejects.toThrow('Verification execution does not match the exact approved remediation.')
+  })
+
+  it('allows verification only for the exact consumed approved execution', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    const next = await lifecycle.transition(
+      state({
+        stage: 'execute',
+        authorization: { ...authorization, status: 'consumed' },
+        execution,
+      }),
+      'verify',
+    )
+
+    expect(next.stage).toBe('verify')
+  })
+
+  it('cannot finalize audit when a required recovery check fails', async () => {
     const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const verifying = state({
       stage: 'verify',
-      execution: {
-        actionId: proposal.id,
-        resources: proposal.resources,
-        appliedAt: '2026-08-25T03:02:30.000Z',
-        success: true,
-      },
+      authorization: { ...authorization, status: 'consumed' },
+      execution,
       verification: [
-        { id: 'retry-rate', label: 'Retry rate normalized', required: true, status: 'passed' },
-        { id: 'checkout-p95', label: 'Checkout p95 restored', required: true, status: 'failed' },
+        {
+          id: 'retry-rate',
+          label: 'Retry rate normalized',
+          required: true,
+          status: 'passed',
+          evidence: 'retry.rate=0.7%',
+        },
+        {
+          id: 'checkout-p95',
+          label: 'Checkout p95 restored',
+          required: true,
+          status: 'failed',
+          evidence: 'checkout.p95=2.8s',
+        },
       ],
     })
 
     await expect(lifecycle.transition(verifying, 'audit')).rejects.toThrow(
-      'Audit cannot finalize until every required recovery check passes.',
+      'Audit cannot finalize until every required recovery check passes with evidence.',
     )
+  })
+
+  it('cannot finalize audit when passed evidence is blank', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    const verifying = state({
+      stage: 'verify',
+      authorization: { ...authorization, status: 'consumed' },
+      execution,
+      verification: [
+        {
+          id: 'retry-rate',
+          label: 'Retry rate normalized',
+          required: true,
+          status: 'passed',
+          evidence: '   ',
+        },
+      ],
+    })
+
+    await expect(lifecycle.transition(verifying, 'audit')).rejects.toThrow(
+      'Audit cannot finalize until every required recovery check passes with evidence.',
+    )
+  })
+
+  it('records audit completion from the trusted system clock after evidence-backed verification', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    vi.setSystemTime(new Date('2026-08-25T03:04:00.000Z'))
+
+    const next = await lifecycle.transition(
+      state({
+        stage: 'verify',
+        authorization: { ...authorization, status: 'consumed' },
+        execution,
+        verification: [
+          {
+            id: 'retry-rate',
+            label: 'Retry rate normalized',
+            required: true,
+            status: 'passed',
+            evidence: 'retry.rate=0.7%',
+          },
+          {
+            id: 'checkout-p95',
+            label: 'Checkout p95 restored',
+            required: true,
+            status: 'passed',
+            evidence: 'checkout.p95=218ms',
+          },
+        ],
+      }),
+      'audit',
+    )
+
+    expect(next.stage).toBe('audit')
+    expect(next.auditRecordedAt).toBe('2026-08-25T03:04:00.000Z')
   })
 
   it('requires an audit record before resolution', async () => {
