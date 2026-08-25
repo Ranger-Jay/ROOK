@@ -44,7 +44,7 @@ const execution: ExecutionRecord = {
   success: true,
 }
 
-const passedVerification: VerificationCheck[] = [
+const passedVerification = [
   {
     id: 'retry-rate',
     label: 'Retry rate normalized',
@@ -59,7 +59,7 @@ const passedVerification: VerificationCheck[] = [
     status: 'passed',
     evidence: 'checkout.p95=218ms',
   },
-]
+] as const satisfies readonly VerificationCheck[]
 
 const state = (overrides: Partial<IncidentState> = {}): IncidentState => ({
   id: 'INC-2048',
