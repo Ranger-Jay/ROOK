@@ -1,5 +1,6 @@
 import {
   allRequiredChecksPassed,
+  proposalFingerprint,
   type AuthorizationArtifact,
   type IncidentStage,
   type IncidentState,
@@ -60,6 +61,12 @@ export function validateAuthorization(
   }
   if (authorization.actionId !== proposal.id) {
     throw new IncidentTransitionError('Authorization does not match the proposed action.')
+  }
+  if (authorization.actionType !== proposal.type) {
+    throw new IncidentTransitionError('Authorization does not match the proposed action type.')
+  }
+  if (authorization.proposalFingerprint !== proposalFingerprint(proposal)) {
+    throw new IncidentTransitionError('Authorization does not match the exact approved proposal.')
   }
   if (!exactResourceMatch(authorization.resources, proposal.resources)) {
     throw new IncidentTransitionError('Authorization scope does not exactly match the proposed resources.')
