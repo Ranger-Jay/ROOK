@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import type { AuthorizationArtifact, IncidentState, ProposedAction } from './incident'
-import { IncidentTransitionError, transitionIncident, validateAuthorization } from './lifecycle'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { InMemoryAuthorizationClaimStore } from './authorizationClaims'
+import {
+  proposalFingerprint,
+  type AuthorizationArtifact,
+  type IncidentState,
+  type ProposedAction,
+} from './incident'
+import { IncidentLifecycle, IncidentTransitionError, validateAuthorization } from './lifecycle'
 
 const proposal: ProposedAction = {
   id: 'action-retry-backoff-v1',
@@ -16,6 +22,8 @@ const authorization: AuthorizationArtifact = {
   id: 'auth-2048',
   incidentId: 'INC-2048',
   actionId: proposal.id,
+  actionType: proposal.type,
+  proposalFingerprint: proposalFingerprint(proposal),
   resources: proposal.resources,
   approvedBy: 'Jay',
   approvedAt: '2026-08-25T03:00:00.000Z',
@@ -36,49 +44,90 @@ const state = (overrides: Partial<IncidentState> = {}): IncidentState => ({
 })
 
 describe('ROOK incident lifecycle', () => {
-  it('allows an exactly scoped, current authorization and consumes it for execution', () => {
-    const next = transitionIncident(state(), 'execute', '2026-08-25T03:02:00.000Z')
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-25T03:02:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('allows an exactly scoped, current authorization and consumes it for execution', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    const next = await lifecycle.transition(state(), 'execute')
 
     expect(next.stage).toBe('execute')
     expect(next.authorization?.status).toBe('consumed')
   })
 
-  it('fails closed when authorization is missing', () => {
-    expect(() =>
-      transitionIncident(state({ authorization: undefined }), 'execute', '2026-08-25T03:02:00.000Z'),
-    ).toThrow('Execution requires explicit human authorization.')
+  it('fails closed when authorization is missing', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    await expect(lifecycle.transition(state({ authorization: undefined }), 'execute')).rejects.toThrow(
+      'Execution requires explicit human authorization.',
+    )
   })
 
   it('fails closed when authorized resources do not exactly match the proposal', () => {
     expect(() =>
-      validateAuthorization(
-        'INC-2048',
-        proposal,
-        { ...authorization, resources: ['inventory-reservation', 'checkout'] },
-        '2026-08-25T03:02:00.000Z',
-      ),
+      validateAuthorization('INC-2048', proposal, {
+        ...authorization,
+        resources: ['inventory-reservation', 'checkout'],
+      }),
     ).toThrow('Authorization scope does not exactly match the proposed resources.')
   })
 
-  it('rejects authorization at its expiry boundary', () => {
-    expect(() =>
-      validateAuthorization('INC-2048', proposal, authorization, authorization.expiresAt),
-    ).toThrow('Authorization has expired.')
+  it('rejects authorization at its system-clock expiry boundary', () => {
+    vi.setSystemTime(new Date(authorization.expiresAt))
+
+    expect(() => validateAuthorization('INC-2048', proposal, authorization)).toThrow('Authorization has expired.')
   })
 
-  it('rejects authorization before its approval timestamp', () => {
-    expect(() =>
-      validateAuthorization('INC-2048', proposal, authorization, '2026-08-25T02:59:59.999Z'),
-    ).toThrow('Authorization is not valid before its approval time.')
+  it('rejects authorization before its system-clock approval timestamp', () => {
+    vi.setSystemTime(new Date('2026-08-25T02:59:59.999Z'))
+
+    expect(() => validateAuthorization('INC-2048', proposal, authorization)).toThrow(
+      'Authorization is not valid before its approval time.',
+    )
   })
 
-  it('keeps execution and verification separate', () => {
+  it('rejects an old approval if the action type changes under the same action id', () => {
     expect(() =>
-      transitionIncident(state({ stage: 'execute' }), 'verify', '2026-08-25T03:03:00.000Z'),
-    ).toThrow('Verification requires a recorded successful execution attempt.')
+      validateAuthorization('INC-2048', { ...proposal, type: 'delete-retry-policy' }, authorization),
+    ).toThrow('Authorization does not match the proposed action type.')
   })
 
-  it('cannot finalize audit until every required recovery check passes', () => {
+  it('rejects an old approval if any approved proposal content changes', () => {
+    expect(() =>
+      validateAuthorization(
+        'INC-2048',
+        { ...proposal, expectedResult: 'Also restart checkout.' },
+        authorization,
+      ),
+    ).toThrow('Authorization does not match the exact approved proposal.')
+  })
+
+  it('atomically rejects replaying the same authorization against the same claim store', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    await lifecycle.transition(state(), 'execute')
+
+    await expect(lifecycle.transition(state(), 'execute')).rejects.toThrow(
+      'Authorization has already been consumed by another execution attempt.',
+    )
+  })
+
+  it('keeps execution and verification separate', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    await expect(lifecycle.transition(state({ stage: 'execute' }), 'verify')).rejects.toThrow(
+      'Verification requires a recorded successful execution attempt.',
+    )
+  })
+
+  it('cannot finalize audit until every required recovery check passes', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     const verifying = state({
       stage: 'verify',
       execution: {
@@ -93,14 +142,16 @@ describe('ROOK incident lifecycle', () => {
       ],
     })
 
-    expect(() => transitionIncident(verifying, 'audit', '2026-08-25T03:04:00.000Z')).toThrow(
+    await expect(lifecycle.transition(verifying, 'audit')).rejects.toThrow(
       'Audit cannot finalize until every required recovery check passes.',
     )
   })
 
-  it('requires an audit record before resolution', () => {
-    expect(() =>
-      transitionIncident(state({ stage: 'audit' }), 'resolved', '2026-08-25T03:04:30.000Z'),
-    ).toThrow(IncidentTransitionError)
+  it('requires an audit record before resolution', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+
+    await expect(lifecycle.transition(state({ stage: 'audit' }), 'resolved')).rejects.toThrow(
+      IncidentTransitionError,
+    )
   })
 })
