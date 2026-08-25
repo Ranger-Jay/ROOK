@@ -30,6 +30,8 @@ export interface AuthorizationArtifact {
   id: string
   incidentId: string
   actionId: string
+  actionType: string
+  proposalFingerprint: string
   resources: readonly string[]
   approvedBy: string
   approvedAt: string
@@ -60,6 +62,27 @@ export interface IncidentState {
   execution?: ExecutionRecord
   verification: readonly VerificationCheck[]
   auditRecordedAt?: string
+}
+
+function normalizedResourceList(resources: readonly string[]): string[] {
+  return [...new Set(resources)].sort()
+}
+
+/**
+ * Canonical structural fingerprint of every proposal field a human approves.
+ * This is an equality binding, not a cryptographic signature; the persistent
+ * authorization store remains responsible for artifact integrity.
+ */
+export function proposalFingerprint(proposal: ProposedAction): string {
+  return JSON.stringify({
+    id: proposal.id,
+    type: proposal.type,
+    resources: normalizedResourceList(proposal.resources),
+    summary: proposal.summary,
+    risk: proposal.risk,
+    expectedResult: proposal.expectedResult,
+    rollbackPlan: proposal.rollbackPlan,
+  })
 }
 
 export function allRequiredChecksPassed(checks: readonly VerificationCheck[]): boolean {
