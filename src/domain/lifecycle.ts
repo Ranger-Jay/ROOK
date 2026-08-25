@@ -1,3 +1,4 @@
+import type { AuthorizationClaimStore } from './authorizationClaims'
 import {
   allRequiredChecksPassed,
   proposalFingerprint,
@@ -89,38 +90,47 @@ export function validateAuthorization(
   return authorization
 }
 
-export function transitionIncident(current: IncidentState, nextStage: IncidentStage): IncidentState {
-  if (!ALLOWED_TRANSITIONS[current.stage].includes(nextStage)) {
-    throw new IncidentTransitionError(`Transition ${current.stage} → ${nextStage} is not allowed.`)
-  }
+export class IncidentLifecycle {
+  constructor(private readonly authorizationClaims: AuthorizationClaimStore) {}
 
-  if (nextStage === 'execute') {
-    if (!current.proposal) {
-      throw new IncidentTransitionError('Execution requires a proposed remediation.')
+  async transition(current: IncidentState, nextStage: IncidentStage): Promise<IncidentState> {
+    if (!ALLOWED_TRANSITIONS[current.stage].includes(nextStage)) {
+      throw new IncidentTransitionError(`Transition ${current.stage} → ${nextStage} is not allowed.`)
     }
 
-    const authorization = validateAuthorization(current.id, current.proposal, current.authorization)
+    if (nextStage === 'execute') {
+      if (!current.proposal) {
+        throw new IncidentTransitionError('Execution requires a proposed remediation.')
+      }
 
-    return {
-      ...current,
-      stage: nextStage,
-      authorization: { ...authorization, status: 'consumed' },
+      const authorization = validateAuthorization(current.id, current.proposal, current.authorization)
+      const claimed = await this.authorizationClaims.claimOnce(authorization.id)
+
+      if (!claimed) {
+        throw new IncidentTransitionError('Authorization has already been consumed by another execution attempt.')
+      }
+
+      return {
+        ...current,
+        stage: nextStage,
+        authorization: { ...authorization, status: 'consumed' },
+      }
     }
-  }
 
-  if (nextStage === 'verify') {
-    if (!current.execution?.success || !current.execution.appliedAt) {
-      throw new IncidentTransitionError('Verification requires a recorded successful execution attempt.')
+    if (nextStage === 'verify') {
+      if (!current.execution?.success || !current.execution.appliedAt) {
+        throw new IncidentTransitionError('Verification requires a recorded successful execution attempt.')
+      }
     }
-  }
 
-  if (nextStage === 'audit' && !allRequiredChecksPassed(current.verification)) {
-    throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes.')
-  }
+    if (nextStage === 'audit' && !allRequiredChecksPassed(current.verification)) {
+      throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes.')
+    }
 
-  if (nextStage === 'resolved' && !current.auditRecordedAt) {
-    throw new IncidentTransitionError('Resolution requires a recorded audit trail.')
-  }
+    if (nextStage === 'resolved' && !current.auditRecordedAt) {
+      throw new IncidentTransitionError('Resolution requires a recorded audit trail.')
+    }
 
-  return { ...current, stage: nextStage }
+    return { ...current, stage: nextStage }
+  }
 }
