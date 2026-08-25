@@ -217,6 +217,57 @@ describe('ROOK incident lifecycle', () => {
     )
   })
 
+  it('rejects audit when a fabricated verify state lacks the approved execution record', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    const fabricatedVerifyState = state({
+      stage: 'verify',
+      authorization: { ...authorization, status: 'consumed' },
+      execution: undefined,
+      verification: [
+        {
+          id: 'retry-rate',
+          label: 'Retry rate normalized',
+          required: true,
+          status: 'passed',
+          evidence: 'retry.rate=0.7%',
+        },
+        {
+          id: 'checkout-p95',
+          label: 'Checkout p95 restored',
+          required: true,
+          status: 'passed',
+          evidence: 'checkout.p95=218ms',
+        },
+      ],
+    })
+
+    await expect(lifecycle.transition(fabricatedVerifyState, 'audit')).rejects.toThrow(
+      'Verification requires a recorded successful execution attempt.',
+    )
+  })
+
+  it('rejects audit when the verify state carries an execution that does not match approval', async () => {
+    const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
+    const mismatchedVerifyState = state({
+      stage: 'verify',
+      authorization: { ...authorization, status: 'consumed' },
+      execution: { ...execution, resources: ['checkout'] },
+      verification: [
+        {
+          id: 'retry-rate',
+          label: 'Retry rate normalized',
+          required: true,
+          status: 'passed',
+          evidence: 'retry.rate=0.7%',
+        },
+      ],
+    })
+
+    await expect(lifecycle.transition(mismatchedVerifyState, 'audit')).rejects.toThrow(
+      'Verification execution does not match the exact approved remediation.',
+    )
+  })
+
   it('records audit completion from the trusted system clock after evidence-backed verification', async () => {
     const lifecycle = new IncidentLifecycle(new InMemoryAuthorizationClaimStore())
     vi.setSystemTime(new Date('2026-08-25T03:04:00.000Z'))
