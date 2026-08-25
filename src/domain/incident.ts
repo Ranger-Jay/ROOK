@@ -41,6 +41,8 @@ export interface AuthorizationArtifact {
 
 export interface ExecutionRecord {
   actionId: string
+  actionType: string
+  proposalFingerprint: string
   resources: readonly string[]
   appliedAt: string
   success: boolean
