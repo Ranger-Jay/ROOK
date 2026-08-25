@@ -88,3 +88,20 @@ The hackathon MVP is the Inventory Retry Storm vertical slice. New ideas are sub
 ## 10. Human comprehension law
 
 AI assistants may generate or review code, but the human participant must be able to explain the architecture, safety boundaries, tool behavior, and material technical decisions.
+
+## 11. Lesson-to-Guardrail Law
+
+**We are not merely learning intellectually; every legitimate lesson becomes a permanent guardrail in ROOK.**
+
+When a review finding, defect, incident, failed assumption, adversarial test, or implementation mistake exposes a repeatable failure mode, convert the lesson into durable protection before considering the issue complete.
+
+Prefer executable guardrails over prose alone:
+
+- code defect → invariant, validation, or safer abstraction;
+- regression risk → automated regression test;
+- build/tooling failure → CI or static check;
+- architecture/safety lesson → domain boundary plus tests, and update doctrine when needed;
+- workflow failure → repository/process automation or an explicit gate;
+- reviewer false positive → preserve the technical rationale; do not encode an incorrect workaround merely to satisfy a tool.
+
+A finding is not fully learned if the same class of mistake can silently recur.
