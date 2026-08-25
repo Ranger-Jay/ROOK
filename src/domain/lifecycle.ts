@@ -154,6 +154,11 @@ export class IncidentLifecycle {
     }
 
     if (nextStage === 'audit') {
+      // Reassert the execution/approval binding at the audit boundary instead of
+      // trusting that a caller reached `verify` through this lifecycle instance.
+      // This keeps fabricated or replayed verify-state snapshots fail closed.
+      assertExecutionMatchesApproval(current)
+
       if (!allRequiredChecksPassed(current.verification)) {
         throw new IncidentTransitionError('Audit cannot finalize until every required recovery check passes with evidence.')
       }
