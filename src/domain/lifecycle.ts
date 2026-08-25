@@ -48,7 +48,6 @@ export function validateAuthorization(
   incidentId: string,
   proposal: ProposedAction,
   authorization: AuthorizationArtifact | undefined,
-  now: string,
 ): AuthorizationArtifact {
   if (!authorization) {
     throw new IncidentTransitionError('Execution requires explicit human authorization.')
@@ -68,7 +67,7 @@ export function validateAuthorization(
 
   const approvedAt = parseTime(authorization.approvedAt, 'approvedAt')
   const expiresAt = parseTime(authorization.expiresAt, 'expiresAt')
-  const currentTime = parseTime(now, 'now')
+  const currentTime = Date.now()
 
   if (expiresAt <= approvedAt) {
     throw new IncidentTransitionError('Authorization expiry must be later than approval time.')
@@ -83,11 +82,7 @@ export function validateAuthorization(
   return authorization
 }
 
-export function transitionIncident(
-  current: IncidentState,
-  nextStage: IncidentStage,
-  now: string,
-): IncidentState {
+export function transitionIncident(current: IncidentState, nextStage: IncidentStage): IncidentState {
   if (!ALLOWED_TRANSITIONS[current.stage].includes(nextStage)) {
     throw new IncidentTransitionError(`Transition ${current.stage} → ${nextStage} is not allowed.`)
   }
@@ -97,7 +92,7 @@ export function transitionIncident(
       throw new IncidentTransitionError('Execution requires a proposed remediation.')
     }
 
-    const authorization = validateAuthorization(current.id, current.proposal, current.authorization, now)
+    const authorization = validateAuthorization(current.id, current.proposal, current.authorization)
 
     return {
       ...current,
