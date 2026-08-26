@@ -1,21 +1,30 @@
-# Citadel Watch design tokens
+# ROOK Design Tokens
 
-`design/design-tokens.json` is the canonical machine-readable source of truth for ROOK visual tokens.
+`design/design-tokens.json` is the canonical source of truth for ROOK visual tokens. The application consumes generated CSS under `src/styles/`; there is no second token source.
 
-`src/styles/tokens.css` is generated from that JSON by:
+## Generate
 
 ```bash
-node scripts/generate-tokens.mjs
+npm run tokens:generate
 ```
 
-Do not hand-edit the generated CSS. CI verifies that regeneration produces no diff.
+## Verify synchronization
 
-This resolves the first-pass handoff ambiguity where CSS contained additional spacing, shadow, overlay, semantic-surface, and layout tokens not represented in the JSON source.
+```bash
+npm run tokens:check
+```
 
-The semantic color laws remain unchanged:
+The check fails when:
 
-- cyan — telemetry/intelligence;
-- violet — AI orchestration;
-- gold — human authority only;
-- red/amber — incident/risk;
-- green — evidence-backed recovery only.
+- either generated CSS file differs from the canonical JSON;
+- a canonical JSON token is not mapped to CSS; or
+- the generator expects a token that no longer exists.
+
+Citadel Watch v1.1 contains **153 mapped canonical tokens**, including dedicated 1080p demo roles:
+
+- `.rook-demo-title`
+- `.rook-demo-metric`
+- `.rook-demo-state`
+- `.rook-demo-essential`
+
+Never edit `src/styles/tokens.css` or `src/styles/typography.css` directly.
