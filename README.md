@@ -34,20 +34,90 @@ For governed learning, a verified lesson may become a **Guardrail Candidate**. A
 
 ## Current milestone
 
-`v0.001-dev` — project foundation, incident lifecycle contract, command-center shell, CI, and TrueForge integration boundary.
+`v0.002-dev` — real local TrueForge session/turn boundary, evidence normalization, and live harness-proof surface.
+
+The implementation is intentionally narrower than the finished ROOK vision:
+
+- v0.002 can observe a real local TrueForge session response and streamed text-only turn;
+- the Inventory Retry Storm telemetry/topology/agent state remains explicitly labeled fixture data;
+- owned read-only MCP investigation begins in v0.003;
+- sandbox reproduction begins in v0.004;
+- human-authorized remediation begins in v0.005;
+- recovery verification/audit begins in v0.006.
+
+A successful v0.002 harness proof therefore establishes **TrueForge connection evidence only**. It does not prove incident telemetry, MCP tool access, sandbox execution, remediation, or recovery.
 
 ## TrueForge role
 
-TrueForge is the agent runtime, not a decorative wrapper. ROOK will use the harness for:
+TrueForge is the agent runtime, not a decorative wrapper.
 
-- persistent agent sessions;
-- real MCP tool access;
+### Implemented in v0.002
+
+- official `@truefoundry/trueforge-sdk` session creation;
+- streamed TrueForge turns;
+- source event IDs, source timestamps when supplied, stream sequence, thread identity, and ROOK observation time;
+- explicit terminal-turn evidence requirement;
+- fail-closed protocol validation;
+- strict local no-login browser boundary;
+- inline model-only agent with no MCP tools, skills, sandbox configuration, or mutation authority.
+
+### Reserved for later milestones
+
+ROOK will use TrueForge for:
+
+- owned MCP tool access;
 - isolated sandbox execution;
 - human approval checkpoints;
 - delegated subagents;
-- context/session continuity.
+- context/session continuity tied to authentic incident evidence.
 
 ROOK's React interface is the operational command surface around that harness work.
+
+See [`docs/TRUEFORGE_V0.002.md`](./docs/TRUEFORGE_V0.002.md) for the exact connection-proof procedure and evidence interpretation.
+
+## Run the v0.002 local harness proof
+
+### 1. Install ROOK
+
+```bash
+npm install
+```
+
+### 2. Start a local TrueForge runtime
+
+Use TrueForge's documented local no-login mode on the local machine. Its default origin is:
+
+```text
+http://127.0.0.1:8790
+```
+
+Configure an actual model in that local TrueForge installation before attempting the proof.
+
+### 3. Create a local environment file
+
+Copy the non-secret placeholders from `.env.example` into `.env.local`:
+
+```text
+VITE_TRUEFORGE_URL=http://127.0.0.1:8790
+VITE_TRUEFORGE_MODEL=provider/model-name
+```
+
+`VITE_*` variables are browser-visible. **Never place API keys, OIDC tokens, passwords, or other credentials in them.** v0.002 intentionally supports only TrueForge's local no-login mode.
+
+### 4. Start ROOK
+
+```bash
+npm run dev
+```
+
+Open the Vite URL and use **Observe live harness** in the TrueForge evidence panel.
+
+The panel can become `LIVE HARNESS OBSERVED` only after ROOK receives:
+
+1. a real TrueForge session resource response; and
+2. exactly one terminal `turn.done` observation from the streamed turn.
+
+The panel exposes the session ID and normalized source-event evidence. The surrounding incident screen remains labeled `FIXTURE INCIDENT DATA` until later milestones replace those surfaces with authentic owned-system evidence.
 
 ## Canonical incident flow
 
@@ -89,7 +159,9 @@ See [`AGENTS.md`](./AGENTS.md) and [`docs/VERSIONING.md`](./docs/VERSIONING.md) 
 ## Qodo Code Review Evidence
 
 - **Initial review-chain verification:** [PR #2 — chore: verify Qodo review workflow](https://github.com/Ranger-Jay/ROOK/pull/2). This was intentionally non-substantive and closed without merge after Qodo automatically completed its review with no material findings.
-- **Representative merged substantive review:** [PR #3 — v0.001 foundation, safety contract, and command shell](https://github.com/Ranger-Jay/ROOK/pull/3). Qodo identified real lifecycle and provenance failure modes around authorization replay/binding, one-time authorization claims, evidence-backed verification, and audit provenance. The valid findings became fail-closed invariants and regression tests. An unsupported Vite configuration recommendation was challenged with evidence rather than implemented mechanically. Qodo's follow-up review on the final PR head reported no remaining High-severity blocker before merge.
+- **v0.001 foundation:** [PR #3 — v0.001 foundation, safety contract, and command shell](https://github.com/Ranger-Jay/ROOK/pull/3). Qodo identified real lifecycle and provenance failure modes around authorization replay/binding, one-time authorization claims, evidence-backed verification, and audit provenance. The valid findings became fail-closed invariants and regression tests. Qodo's follow-up review on the final PR head reported no remaining High-severity blocker before merge.
+- **v0.001 visual integration:** [PR #4 — Citadel Watch v1.1](https://github.com/Ranger-Jay/ROOK/pull/4). Qodo identified runtime brand-token drift; the fix moved the runtime mark back onto semantic design tokens. Final review reported no High- or Medium-severity blocker before merge.
+- **v0.002 TrueForge runtime:** [PR #5](https://github.com/Ranger-Jay/ROOK/pull/5) is the active review trail. Early review findings around provenance, truncated streams, local URL credentials, malformed known events, and evidence vocabulary are being converted into regression-tested invariants before release promotion.
 
 The public PR discussion is the canonical evidence trail; screenshots may supplement it but do not replace it.
 
@@ -99,4 +171,4 @@ AI coding and design assistants are used as development collaborators. Material 
 
 ## Status
 
-Active hackathon development. Setup instructions will be expanded as the runnable TrueForge integration lands.
+Active hackathon development. `v0.002-dev` is implemented on PR #5 but remains pre-release until final CI/Qodo review and authentic local TrueForge capture satisfy the milestone evidence gate.
