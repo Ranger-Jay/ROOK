@@ -5,6 +5,7 @@ import {
   TrueForgeHarnessAdapter,
   assertLocalTrueForgeUrl,
   normalizeTrueForgeEvent,
+  type TrueForgeSessionSeed,
   type TrueForgeStreamItem,
   type TrueForgeTransport,
 } from './trueforge'
@@ -120,8 +121,10 @@ describe('assertLocalTrueForgeUrl', () => {
 })
 
 class FakeTransport implements TrueForgeTransport {
-  async createSession(agentName: string): Promise<{ id: string }> {
-    expect(agentName).toBe('rook-incident-commander')
+  capturedSeed?: TrueForgeSessionSeed
+
+  async createSession(seed: TrueForgeSessionSeed): Promise<{ id: string }> {
+    this.capturedSeed = seed
     return { id: 'sess_live_01' }
   }
 
@@ -154,17 +157,39 @@ class FailingTransport implements TrueForgeTransport {
 }
 
 describe('TrueForgeHarnessAdapter', () => {
-  it('creates a real session boundary and emits normalized streamed evidence', async () => {
+  it('creates a model-only inline session seed with explicit no-authority instructions', async () => {
+    const transport = new FakeTransport()
     const adapter = new TrueForgeHarnessAdapter(
-      { agentName: 'rook-incident-commander' },
-      new FakeTransport(),
+      { modelName: 'anthropic/claude-sonnet-4-6' },
+      transport,
+      () => observedAt,
+    )
+
+    await adapter.createIncidentSession({
+      incidentId: 'INC-2048',
+      title: 'Inventory Retry Storm',
+      objective: 'Verify the live harness connection without mutation.',
+    })
+
+    expect(transport.capturedSeed?.modelName).toBe('anthropic/claude-sonnet-4-6')
+    expect(transport.capturedSeed?.instructions).toContain('no MCP tools, skills, sandbox, or mutation authority')
+    expect(transport.capturedSeed?.instructions).toContain('Never claim that you observed telemetry')
+    expect(transport.capturedSeed?.instructions).toContain('INC-2048 — Inventory Retry Storm')
+    expect(Object.keys(transport.capturedSeed ?? {}).sort()).toEqual(['instructions', 'modelName'])
+  })
+
+  it('creates a real session boundary and emits normalized streamed evidence', async () => {
+    const transport = new FakeTransport()
+    const adapter = new TrueForgeHarnessAdapter(
+      { modelName: 'anthropic/claude-sonnet-4-6' },
+      transport,
       () => observedAt,
     )
 
     const session = await adapter.createIncidentSession({
       incidentId: 'INC-2048',
       title: 'Inventory Retry Storm',
-      objective: 'Investigate the retry storm without mutation.',
+      objective: 'Verify the live harness connection without mutation.',
     })
 
     expect(session).toEqual({ incidentId: 'INC-2048', sessionId: 'sess_live_01' })
@@ -183,7 +208,7 @@ describe('TrueForgeHarnessAdapter', () => {
 
   it('fails visibly and emits adapter-origin error evidence when streaming fails', async () => {
     const adapter = new TrueForgeHarnessAdapter(
-      { agentName: 'rook-incident-commander' },
+      { modelName: 'anthropic/claude-sonnet-4-6' },
       new FailingTransport(),
       () => observedAt,
     )
