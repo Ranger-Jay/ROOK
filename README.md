@@ -10,6 +10,28 @@ It is designed around one operational contract:
 
 The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack saturates shared infrastructure, degrades checkout, and requires ROOK to investigate, reproduce the fault safely, propose a bounded remediation, stop for human authorization, execute only the approved action, and independently verify recovery.
 
+## ROOK Truth Doctrine
+
+ROOK is not designed to appear autonomous. ROOK is designed to make autonomy accountable.
+
+> **Never simulate proof. If a capability does not exist, remove the claim.**
+
+ROOK's communication contract is:
+
+`CLAIM → EVIDENCE → PUBLIC TRUTH`
+
+The state model deliberately preserves distinctions that persuasive interfaces often blur:
+
+- **Proposed ≠ Approved.** A recommendation is not authority.
+- **Applied ≠ Verified.** Execution is not recovery.
+- **Verified ≠ Policy.** A proven lesson is not automatically active enforcement.
+- **AI proposes. Human authorizes.** Privileged mutation remains a human decision.
+- **Green is earned.** Verified Green appears only after required recovery evidence passes.
+
+Functional claims advance only as evidence advances: **design intent → implemented but not demonstrated → proven in an authentic run → cleared for public claim**. Fixture and reference surfaces remain labeled until authentic TrueForge evidence replaces them.
+
+For governed learning, a verified lesson may become a **Guardrail Candidate**. Any activation that changes active enforcement policy requires a separate human-authority decision.
+
 ## Current milestone
 
 `v0.001-dev` — project foundation, incident lifecycle contract, command-center shell, CI, and TrueForge integration boundary.
@@ -52,11 +74,13 @@ Operational color semantics:
 - Red/Amber — incident and risk
 - Green — evidence-backed recovery only
 
+`design/design-tokens.json` is the single canonical token source. `scripts/generate-tokens.mjs` deterministically generates the application token and typography CSS, and CI fails closed on unmapped, missing, or stale generated tokens.
+
 ## Engineering workflow
 
 Every substantive change follows:
 
-`branch → scoped commits → tests/CI → pull request → Qodo review → resolve/dismiss findings → Qodo follow-up → Buddy Main verifies Qodo + CI → merge`
+`branch → scoped commits → tests/CI → pull request → Qodo review → resolve/dismiss findings → Qodo follow-up → Buddy Main verifies Qodo + CI → human merge`
 
 No substantive direct pushes to `main`.
 
@@ -65,9 +89,9 @@ See [`AGENTS.md`](./AGENTS.md) and [`docs/VERSIONING.md`](./docs/VERSIONING.md) 
 ## Qodo Code Review Evidence
 
 - **Initial review-chain verification:** [PR #2 — chore: verify Qodo review workflow](https://github.com/Ranger-Jay/ROOK/pull/2). This was intentionally non-substantive and closed without merge after Qodo automatically completed its review with no material findings.
-- **Representative merged substantive PR:** _Pending first v0.001 merge._
+- **Representative merged substantive review:** [PR #3 — v0.001 foundation, safety contract, and command shell](https://github.com/Ranger-Jay/ROOK/pull/3). Qodo identified real lifecycle and provenance failure modes around authorization replay/binding, one-time authorization claims, evidence-backed verification, and audit provenance. The valid findings became fail-closed invariants and regression tests. An unsupported Vite configuration recommendation was challenged with evidence rather than implemented mechanically. Qodo's follow-up review on the final PR head reported no remaining High-severity blocker before merge.
 
-This section will be updated throughout the hackathon with meaningful merged PR evidence, Qodo findings, engineering decisions, and follow-up review results.
+The public PR discussion is the canonical evidence trail; screenshots may supplement it but do not replace it.
 
 ## AI assistance disclosure
 
