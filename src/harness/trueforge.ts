@@ -68,7 +68,13 @@ const readRecord = (record: UnknownRecord, ...keys: string[]): UnknownRecord | u
 }
 
 const readThreadId = (record: UnknownRecord): string | null | undefined => {
-  const value = record.threadId ?? record.thread_id
+  if (Object.prototype.hasOwnProperty.call(record, 'threadId')) {
+    const value = record.threadId
+    if (value === null) return null
+    return typeof value === 'string' ? value : undefined
+  }
+
+  const value = record.thread_id
   if (value === null) return null
   return typeof value === 'string' ? value : undefined
 }
