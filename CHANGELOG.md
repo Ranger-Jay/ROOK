@@ -26,18 +26,22 @@ All notable ROOK milestones are documented here.
 - Credential-bearing, hosted/remote, query-bearing, fragment-bearing, and endpoint-path TrueForge URLs are rejected by the v0.002 browser boundary.
 - Preserves `threadId: null` as the documented root-thread provenance marker rather than collapsing it to `undefined`.
 - Public harness interface comments now use evidence-state claim vocabulary.
+- Routes browser SDK traffic through the dedicated same-origin `/__rook_trueforge` Vite proxy so the authentic proof does not depend on cross-origin browser access to the local TrueForge server.
+- Reuses the strict credential-free loopback validator for the proxy target and refuses unrelated proxy paths.
 
 ### Tests
 
 - Added TrueForge event normalization, evidence provenance, terminal-state, malformed-event, URL-boundary, transport-failure, capability-drift, and inline-agent authority tests.
 - Added browser runtime-configuration tests covering missing, invalid, credential-bearing, hosted, and valid local states.
-- Converted Qodo review findings into regression coverage rather than review-only commentary.
+- Added same-origin proxy regression tests covering SDK base selection, proxy target validation, path rewriting, and refusal of broadened proxy routes.
+- Converted Qodo review findings and subsequent integration-audit findings into regression coverage rather than review-only commentary.
 
 ### Review history
 
 - PR #5 opened before UI promotion so Qodo could review the actual transport boundary early.
 - Initial Qodo review reported eight bugs and one evidence-vocabulary rule violation, including High-severity findings around unknown-event compatibility, fabricated session provenance, and incomplete-stream readiness.
-- Valid findings are being resolved on the same branch with dedicated `fix:` and `test:` commits before release promotion.
+- Valid findings were resolved on the same branch with dedicated `fix:` and `test:` commits before release promotion.
+- A subsequent Buddy Main audit against the current upstream TrueForge server/SDK identified that direct browser-to-TrueForge requests would rely on a cross-origin contract not established by the server. The transport was moved behind ROOK's strict same-origin local proxy and the failure mode was regression-tested before authentic capture.
 
 ### Status
 

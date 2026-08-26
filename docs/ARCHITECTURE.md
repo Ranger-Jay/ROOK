@@ -55,6 +55,7 @@ The main ROOK agent synthesizes evidence, proposes the remediation, and owns the
 ROOK uses the official `@truefoundry/trueforge-sdk` for a deliberately narrow proof:
 
 - local no-login TrueForge origin only;
+- browser SDK traffic routed through ROOK's dedicated same-origin `/__rook_trueforge` Vite proxy;
 - inline model-only agent;
 - real session creation;
 - real streamed text-only turn;
@@ -64,7 +65,24 @@ ROOK uses the official `@truefoundry/trueforge-sdk` for a deliberately narrow pr
 - unknown future events are ignored without inventing semantics;
 - unexpected tool/sandbox/subagent/approval/MCP capability events fail the v0.002 proof.
 
-No browser token exists in this boundary. Hosted/OIDC connectivity is deferred behind a server-side trust boundary rather than exposing credentials through Vite environment variables.
+The configured TrueForge target is validated as a credential-free `localhost`/`127.0.0.1` HTTP origin. The Vite dev/preview server is the only component that talks directly to that target. Browser SDK requests stay same-origin:
+
+```text
+ROOK browser
+    │
+    │  /__rook_trueforge/api/v1/...
+    ▼
+Vite dev / preview proxy
+    │
+    │  validates target + strips proxy prefix
+    ▼
+http://localhost:8790 or http://127.0.0.1:8790
+    │
+    ▼
+TrueForge API / SSE stream
+```
+
+This boundary avoids depending on a cross-origin browser contract from TrueForge while keeping the local proof credential-free. No browser token exists in v0.002. Hosted/OIDC connectivity is deferred behind a server-side trust boundary rather than exposing credentials through Vite environment variables.
 
 See [`TRUEFORGE_V0.002.md`](./TRUEFORGE_V0.002.md) for the reproducible proof and evidence rules.
 
@@ -108,17 +126,20 @@ src/
   app/          application shell and composition
   components/   visual components
   domain/       incident state and safety invariants
-  harness/      TrueForge adapter, transport, runtime config, evidence proof
+  harness/      TrueForge adapter, transport, local proxy guardrail, runtime config, evidence proof
   fixtures/     clearly labeled demo data only
   styles/       generated Citadel Watch tokens + global styles
 ```
 
 The domain package does not depend on React or TrueForge transport details. This keeps lifecycle/safety rules unit-testable.
 
-The harness package separates four concerns:
+The harness package separates five concerns:
 
 ```text
 runtime configuration
+        │
+        ▼
+local proxy / transport boundary
         │
         ▼
 SDK transport
@@ -145,6 +166,8 @@ v0.002 can authentically own:
 - stream sequence identifiers when supplied;
 - thread identity, preserving `null` root-thread semantics;
 - terminal turn status.
+
+The proxy itself is transport infrastructure, not evidence that TrueForge is live. `LIVE HARNESS OBSERVED` still requires a real session response plus exactly one terminal streamed turn.
 
 ### Fixture incident evidence
 

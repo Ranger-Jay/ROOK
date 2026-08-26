@@ -23,7 +23,17 @@ VITE_TRUEFORGE_URL=http://127.0.0.1:8790
 VITE_TRUEFORGE_MODEL=provider/model-name
 ```
 
-The URL validator accepts only a credential-free `http://localhost[:port]` or `http://127.0.0.1[:port]` origin. It rejects:
+`VITE_TRUEFORGE_URL` is the validated **local proxy target**, not the URL the browser SDK calls directly. ROOK's Vite dev/preview server exposes the dedicated same-origin prefix:
+
+```text
+/__rook_trueforge
+```
+
+The browser SDK uses that prefix as its base URL. Vite strips the prefix and proxies the HTTP/SSE request to the configured local TrueForge origin. This keeps browser traffic same-origin and does not depend on the TrueForge server exposing a cross-origin browser contract.
+
+The proxy is enabled only when `VITE_TRUEFORGE_URL` passes the same strict loopback-origin validator used by the React runtime. Invalid or absent configuration does not create a broad fallback proxy; the runtime remains explicitly unconfigured.
+
+The target validator accepts only a credential-free `http://localhost[:port]` or `http://127.0.0.1[:port]` origin. It rejects:
 
 - hosted or remote hosts;
 - HTTPS/hosted-OIDC use from the browser;
@@ -33,6 +43,10 @@ The URL validator accepts only a credential-free `http://localhost[:port]` or `h
 - endpoint paths.
 
 `VITE_*` variables are browser-visible. No API token, OIDC token, password, or other secret belongs in this v0.002 path.
+
+### Local proof transport only
+
+The `/__rook_trueforge` proxy is a v0.002 local-development/preview boundary. It is not a claim that a static production deployment can reach a developer-machine TrueForge process. Hosted/OIDC deployment belongs behind a later server-side trust boundary.
 
 ## Agent authority boundary
 
@@ -141,13 +155,13 @@ A live harness connection does not promote those surfaces to live incident evide
    VITE_TRUEFORGE_MODEL=provider/model-name
    ```
 
-5. Start ROOK:
+5. Start ROOK through Vite so the same-origin TrueForge proxy is active:
 
    ```bash
    npm run dev
    ```
 
-6. Open the incident workspace and select **Observe live harness**.
+6. Open the Vite-served incident workspace and select **Observe live harness**.
 
 7. Capture evidence showing:
 
@@ -156,6 +170,8 @@ A live harness connection does not promote those surfaces to live incident evide
    - the panel shows one or more TrueForge stream event IDs;
    - the stream reaches exactly one terminal event;
    - the incident-data banner still says `FIXTURE INCIDENT DATA`.
+
+A direct static-file launch is not equivalent to this proof because it does not provide the governed `/__rook_trueforge` transport boundary.
 
 ## Release evidence gate
 
