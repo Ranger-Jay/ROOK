@@ -17,15 +17,7 @@ const agents = [
 const stages = ['Detect', 'Investigate', 'Delegate', 'Sandbox', 'Propose', 'Approve', 'Execute', 'Verify', 'Audit']
 
 function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <i className="bastion bastion-nw" />
-      <i className="bastion bastion-ne" />
-      <i className="bastion bastion-sw" />
-      <i className="bastion bastion-se" />
-      <i className="kernel" />
-    </span>
-  )
+  return <img className="brand-mark" src="/brand/rook-mark-color.svg" alt="" aria-hidden="true" />
 }
 
 function App() {
