@@ -97,9 +97,21 @@ const evidenceFor = (
   threadId: readThreadId(raw),
 })
 
+const knownEventTypes = new Set([
+  'turn.created',
+  'model.message.delta',
+  'tool.response',
+  'sandbox.created',
+  'thread.created',
+  'thread.done',
+  'tool.approval_required',
+  'mcp.auth_required',
+  'turn.done',
+])
+
 /**
  * Translate only event facts that TrueForge explicitly emitted. Unknown event types
- * are ignored rather than guessed. Malformed known events fail closed.
+ * are ignored without requiring today's common fields. Malformed known events fail closed.
  */
 export function normalizeTrueForgeEvent(
   rawEvent: unknown,
@@ -110,6 +122,8 @@ export function normalizeTrueForgeEvent(
   if (!isRecord(rawEvent)) throw new HarnessProtocolError('TrueForge stream yielded a non-object event.')
 
   const type = requireString(rawEvent, 'event type', 'type')
+  if (!knownEventTypes.has(type)) return []
+
   const evidence = evidenceFor(rawEvent, sequence, observedAt)
 
   switch (type) {
@@ -121,10 +135,13 @@ export function normalizeTrueForgeEvent(
         turnId: requireString(rawEvent, 'turn id', 'turnId', 'turn_id'),
       }]
 
-    case 'model.message.delta': {
-      const text = readString(rawEvent, 'content')
-      return text ? [{ ...evidence, type: 'agent.message.delta', sessionId, text }] : []
-    }
+    case 'model.message.delta':
+      return [{
+        ...evidence,
+        type: 'agent.message.delta',
+        sessionId,
+        text: requireString(rawEvent, 'model-message delta content', 'content'),
+      }]
 
     case 'tool.response':
       return [{
@@ -169,25 +186,41 @@ export function normalizeTrueForgeEvent(
     }
 
     case 'tool.approval_required': {
-      const approvals = readArray(rawEvent, 'toolCalls', 'tool_calls').flatMap((candidate) => {
-        if (!isRecord(candidate)) return []
-        const approvalId = readString(candidate, 'id')
-        const sourceMessageId = readString(candidate, 'sourceEventId', 'source_event_id')
-        if (!approvalId || !sourceMessageId) return []
-        return [{ ...evidence, type: 'approval.requested' as const, sessionId, approvalId, sourceMessageId }]
+      const candidates = readArray(rawEvent, 'toolCalls', 'tool_calls')
+      if (candidates.length === 0) {
+        throw new HarnessProtocolError('TrueForge approval event contained no tool-call references.')
+      }
+
+      return candidates.map((candidate, index) => {
+        if (!isRecord(candidate)) {
+          throw new HarnessProtocolError(`TrueForge approval entry ${index} is not an object.`)
+        }
+        return {
+          ...evidence,
+          type: 'approval.requested' as const,
+          sessionId,
+          approvalId: requireString(candidate, `approval entry ${index} call id`, 'id'),
+          sourceMessageId: requireString(candidate, `approval entry ${index} source event id`, 'sourceEventId', 'source_event_id'),
+        }
       })
-      if (approvals.length === 0) throw new HarnessProtocolError('TrueForge approval event contained no valid tool-call references.')
-      return approvals
     }
 
     case 'mcp.auth_required': {
-      const servers = readArray(rawEvent, 'mcpServers', 'mcp_servers').flatMap((candidate) => {
-        if (!isRecord(candidate)) return []
-        const name = readString(candidate, 'name')
-        const authUrl = readString(candidate, 'authUrl', 'auth_url')
-        return name && authUrl ? [{ name, authUrl }] : []
+      const candidates = readArray(rawEvent, 'mcpServers', 'mcp_servers')
+      if (candidates.length === 0) {
+        throw new HarnessProtocolError('TrueForge MCP auth event contained no authorization targets.')
+      }
+
+      const servers = candidates.map((candidate, index) => {
+        if (!isRecord(candidate)) {
+          throw new HarnessProtocolError(`TrueForge MCP authorization target ${index} is not an object.`)
+        }
+        return {
+          name: requireString(candidate, `MCP authorization target ${index} name`, 'name'),
+          authUrl: requireString(candidate, `MCP authorization target ${index} URL`, 'authUrl', 'auth_url'),
+        }
       })
-      if (servers.length === 0) throw new HarnessProtocolError('TrueForge MCP auth event contained no valid authorization targets.')
+
       return [{ ...evidence, type: 'mcp.authorization.required', sessionId, servers }]
     }
 
@@ -220,8 +253,14 @@ export function assertLocalTrueForgeUrl(baseUrl: string): string {
   if (parsed.protocol !== 'http:' || (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
     throw new Error('v0.002 permits only the official local no-login TrueForge boundary on http://localhost or http://127.0.0.1.')
   }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('VITE_TRUEFORGE_URL must be a credential-free local origin with no userinfo, query, or fragment.')
+  }
+  if (parsed.pathname !== '/' && parsed.pathname !== '') {
+    throw new Error('VITE_TRUEFORGE_URL must contain only the local TrueForge origin, not an endpoint path.')
+  }
 
-  return parsed.toString().replace(/\/$/, '')
+  return parsed.origin
 }
 
 /**
@@ -278,6 +317,28 @@ const buildReadOnlyInstructions = (request: IncidentSessionRequest): string => [
   `Objective: ${request.objective}`,
 ].join('\n')
 
+const forbiddenV002EventTypes = new Set<HarnessEvent['type']>([
+  'tool.returned',
+  'sandbox.started',
+  'subagent.started',
+  'subagent.completed',
+  'approval.requested',
+  'mcp.authorization.required',
+])
+
+const assertV002CapabilityBoundary = (event: HarnessEvent): void => {
+  if (forbiddenV002EventTypes.has(event.type)) {
+    throw new HarnessProtocolError(
+      `v0.002 text-only session observed unexpected capability event ${event.type} (${event.sourceEventId}).`,
+    )
+  }
+  if (event.type === 'turn.completed' && event.requiredActionCount !== 0) {
+    throw new HarnessProtocolError(
+      `v0.002 text-only turn observed ${event.requiredActionCount} required action(s) at ${event.sourceEventId}.`,
+    )
+  }
+}
+
 export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
   private state: HarnessConnectionState = 'disconnected'
   private readonly subscribers = new Map<string, Set<HarnessSubscriber>>()
@@ -302,16 +363,16 @@ export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
         modelName: this.config.modelName,
         instructions: buildReadOnlyInstructions(request),
       })
+      const observedAt = this.now()
       this.state = 'ready'
-      this.emit(session.id, {
-        type: 'session.created',
+      return {
         incidentId: request.incidentId,
         sessionId: session.id,
-        source: 'trueforge',
-        sourceEventId: session.id,
-        observedAt: this.now(),
-      })
-      return { incidentId: request.incidentId, sessionId: session.id }
+        observation: {
+          source: 'trueforge-session-response',
+          observedAt,
+        },
+      }
     } catch (error) {
       this.state = 'failed'
       throw error
@@ -320,12 +381,25 @@ export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
 
   async runTurn(request: TurnRequest): Promise<void> {
     this.state = 'connecting'
+    let terminalEventCount = 0
+
     try {
       for await (const item of this.transport.streamTurn(request.sessionId, request.instruction)) {
-        this.state = 'ready'
         const events = normalizeTrueForgeEvent(item.event, request.sessionId, item.sequence, this.now())
-        events.forEach((event) => this.emit(request.sessionId, event))
+        for (const event of events) {
+          assertV002CapabilityBoundary(event)
+          if (event.type === 'turn.completed') terminalEventCount += 1
+          if (terminalEventCount > 1) {
+            throw new HarnessProtocolError('TrueForge stream contained more than one terminal turn event.')
+          }
+          this.emit(request.sessionId, event)
+        }
       }
+
+      if (terminalEventCount !== 1) {
+        throw new HarnessProtocolError('TrueForge stream ended before one terminal turn.done event was observed.')
+      }
+
       this.state = 'ready'
     } catch (error) {
       this.state = 'failed'

@@ -10,7 +10,6 @@ export interface HarnessEventEvidence {
 }
 
 export type HarnessEvent = HarnessEventEvidence & (
-  | { type: 'session.created'; incidentId: string; sessionId: string }
   | { type: 'turn.started'; sessionId: string; turnId: string }
   | { type: 'agent.message.delta'; sessionId: string; text: string }
   | { type: 'tool.returned'; sessionId: string; callId: string }
@@ -33,6 +32,10 @@ export interface IncidentSessionRequest {
 export interface IncidentSession {
   incidentId: string
   sessionId: string
+  observation: {
+    source: 'trueforge-session-response'
+    observedAt: string
+  }
 }
 
 export interface TurnRequest {
@@ -43,13 +46,19 @@ export interface TurnRequest {
 export interface RookHarnessAdapter {
   readonly connectionState: HarnessConnectionState
 
-  /** Maps one ROOK incident to one durable TrueForge session. */
+  /**
+   * Evidence state: a successful return means a TrueForge session resource was
+   * observed for this incident. It does not prove an investigative result.
+   */
   createIncidentSession(request: IncidentSessionRequest): Promise<IncidentSession>
 
-  /** Starts/continues the TrueForge agent loop for an existing incident session. */
+  /**
+   * Evidence state: a successful return means one terminal TrueForge turn event
+   * was observed. It does not imply tool success or incident verification.
+   */
   runTurn(request: TurnRequest): Promise<void>
 
-  /** Emits normalized evidence without leaking generated SDK wire types into the UI. */
+  /** Evidence state: callbacks receive observed normalized harness events with provenance. */
   subscribe(sessionId: string, onEvent: (event: HarnessEvent) => void): () => void
 }
 
@@ -63,11 +72,11 @@ export class UnconfiguredHarnessAdapter implements RookHarnessAdapter {
   constructor(private readonly reason = 'TrueForge harness is not configured.') {}
 
   async createIncidentSession(): Promise<never> {
-    throw new Error(`${this.reason} No live TrueForge session was created.`)
+    throw new Error(`${this.reason} No live TrueForge session was observed.`)
   }
 
   async runTurn(): Promise<never> {
-    throw new Error(`${this.reason} No live TrueForge turn was started.`)
+    throw new Error(`${this.reason} No terminal live TrueForge turn was observed.`)
   }
 
   subscribe(): () => void {
