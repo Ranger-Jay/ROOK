@@ -15,8 +15,13 @@ export interface TrueForgeStreamItem {
   sequence?: string
 }
 
+export interface TrueForgeSessionSeed {
+  modelName: string
+  instructions: string
+}
+
 export interface TrueForgeTransport {
-  createSession(agentName: string): Promise<{ id: string }>
+  createSession(seed: TrueForgeSessionSeed): Promise<{ id: string }>
   streamTurn(sessionId: string, instruction: string): AsyncIterable<TrueForgeStreamItem>
 }
 
@@ -26,7 +31,7 @@ export interface LocalTrueForgeTransportConfig {
 }
 
 export interface TrueForgeHarnessAdapterConfig {
-  agentName: string
+  modelName: string
 }
 
 export class HarnessProtocolError extends Error {
@@ -219,7 +224,11 @@ export function assertLocalTrueForgeUrl(baseUrl: string): string {
   return parsed.toString().replace(/\/$/, '')
 }
 
-/** Official SDK transport. No token is accepted in v0.002; hosted/OIDC belongs behind a server-side boundary later. */
+/**
+ * Official SDK transport. v0.002 intentionally creates an inline agent with only
+ * a model and instructions: no MCP servers, tools, skills, or sandbox authority.
+ * Hosted/OIDC connectivity belongs behind a server-side boundary in a later milestone.
+ */
 export class SdkTrueForgeTransport implements TrueForgeTransport {
   private readonly client: TrueForge
 
@@ -230,8 +239,15 @@ export class SdkTrueForgeTransport implements TrueForgeTransport {
     })
   }
 
-  async createSession(agentName: string): Promise<{ id: string }> {
-    const { data } = await this.client.sessions.create({ agent: { name: agentName } })
+  async createSession(seed: TrueForgeSessionSeed): Promise<{ id: string }> {
+    const { data } = await this.client.sessions.create({
+      agent: {
+        spec: {
+          model: { name: seed.modelName },
+          instructions: seed.instructions,
+        },
+      },
+    })
     return { id: data.id }
   }
 
@@ -253,6 +269,15 @@ const errorMessage = (error: unknown): string => error instanceof Error ? error.
 
 type HarnessSubscriber = (event: HarnessEvent) => void
 
+const buildReadOnlyInstructions = (request: IncidentSessionRequest): string => [
+  'You are the ROOK v0.002 TrueForge connection-verification agent.',
+  'This session is intentionally text-only and has no MCP tools, skills, sandbox, or mutation authority.',
+  'Never claim that you observed telemetry, configuration, topology, tool output, or production state unless that evidence is explicitly supplied in the conversation.',
+  'Do not present a proposal as approved, an execution as verified, or a verification result as policy.',
+  `Incident: ${request.incidentId} — ${request.title}.`,
+  `Objective: ${request.objective}`,
+].join('\n')
+
 export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
   private state: HarnessConnectionState = 'disconnected'
   private readonly subscribers = new Map<string, Set<HarnessSubscriber>>()
@@ -263,7 +288,7 @@ export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
     private readonly transport: TrueForgeTransport,
     private readonly now: () => string = () => new Date().toISOString(),
   ) {
-    if (!config.agentName.trim()) throw new Error('TrueForge agentName is required.')
+    if (!config.modelName.trim()) throw new Error('TrueForge modelName is required.')
   }
 
   get connectionState(): HarnessConnectionState {
@@ -273,7 +298,10 @@ export class TrueForgeHarnessAdapter implements RookHarnessAdapter {
   async createIncidentSession(request: IncidentSessionRequest): Promise<IncidentSession> {
     this.state = 'connecting'
     try {
-      const session = await this.transport.createSession(this.config.agentName)
+      const session = await this.transport.createSession({
+        modelName: this.config.modelName,
+        instructions: buildReadOnlyInstructions(request),
+      })
       this.state = 'ready'
       this.emit(session.id, {
         type: 'session.created',
