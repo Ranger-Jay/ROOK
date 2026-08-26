@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "tokens:generate": "node scripts/generate-tokens.mjs",
+    "tokens:check": "node scripts/generate-tokens.mjs --check",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run"

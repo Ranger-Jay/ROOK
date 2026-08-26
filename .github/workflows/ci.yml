@@ -24,10 +24,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Verify generated design tokens
-        run: |
-          npm run tokens:generate
-          git diff --exit-code -- src/styles/tokens.css
+      - name: Verify canonical design-token synchronization
+        run: npm run tokens:check
 
       - name: Run unit tests
         run: npm test
