@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">ROOK Cardinal Bastion Kernel</title>
+  <desc id="desc">Four defended operational bastions and controlled cardinal gateways surround a protected orchestration kernel.</desc>
+  <g fill="#5DE4FF" aria-label="Operational bastions">
+    <path d="M12 8H28V16H21L16 21V28H8V12L12 8Z"/>
+    <path d="M36 8H52L56 12V28H48V21L43 16H36V8Z"/>
+    <path d="M56 36V52L52 56H36V48H43L48 43V36H56Z"/>
+    <path d="M28 56H12L8 52V36H16V43L21 48H28V56Z"/>
+  </g>
+  <path d="M28 23H36L41 28V36L36 41H28L23 36V28L28 23Z" fill="#806EFF" aria-label="Protected orchestration kernel"/>
+</svg>
