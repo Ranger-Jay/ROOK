@@ -1,9 +1,12 @@
 import type { RookHarnessAdapter } from './adapter'
 import { UnconfiguredHarnessAdapter } from './adapter'
 import {
+  TRUEFORGE_BROWSER_PROXY_BASE,
+  assertLocalTrueForgeUrl,
+} from './localProxy'
+import {
   SdkTrueForgeTransport,
   TrueForgeHarnessAdapter,
-  assertLocalTrueForgeUrl,
 } from './trueforge'
 
 export interface HarnessEnvironment {
@@ -66,6 +69,6 @@ export function createHarnessAdapter(configuration: HarnessRuntimeConfiguration)
 
   return new TrueForgeHarnessAdapter(
     { modelName: configuration.modelName },
-    new SdkTrueForgeTransport({ baseUrl: configuration.baseUrl }),
+    new SdkTrueForgeTransport({ baseUrl: TRUEFORGE_BROWSER_PROXY_BASE }),
   )
 }

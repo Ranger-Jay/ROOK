@@ -7,6 +7,9 @@ import type {
   RookHarnessAdapter,
   TurnRequest,
 } from './adapter'
+import { assertTrueForgeSdkBaseUrl } from './localProxy'
+
+export { assertLocalTrueForgeUrl } from './localProxy'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -247,28 +250,6 @@ export function normalizeTrueForgeEvent(
   }
 }
 
-export function assertLocalTrueForgeUrl(baseUrl: string): string {
-  let parsed: URL
-  try {
-    parsed = new URL(baseUrl)
-  } catch {
-    throw new Error('VITE_TRUEFORGE_URL must be a valid URL.')
-  }
-
-  const hostname = parsed.hostname.toLowerCase()
-  if (parsed.protocol !== 'http:' || (hostname !== 'localhost' && hostname !== '127.0.0.1')) {
-    throw new Error('v0.002 permits only the official local no-login TrueForge boundary on http://localhost or http://127.0.0.1.')
-  }
-  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error('VITE_TRUEFORGE_URL must be a credential-free local origin with no userinfo, query, or fragment.')
-  }
-  if (parsed.pathname !== '/' && parsed.pathname !== '') {
-    throw new Error('VITE_TRUEFORGE_URL must contain only the local TrueForge origin, not an endpoint path.')
-  }
-
-  return parsed.origin
-}
-
 /**
  * Official SDK transport. v0.002 intentionally creates an inline agent with only
  * a model and instructions: no MCP servers, tools, skills, or sandbox authority.
@@ -279,7 +260,7 @@ export class SdkTrueForgeTransport implements TrueForgeTransport {
 
   constructor(config: LocalTrueForgeTransportConfig) {
     this.client = new TrueForge({
-      baseUrl: assertLocalTrueForgeUrl(config.baseUrl),
+      baseUrl: assertTrueForgeSdkBaseUrl(config.baseUrl),
       timeoutInSeconds: config.timeoutInSeconds ?? 600,
     })
   }
