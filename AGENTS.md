@@ -11,6 +11,7 @@ These rules apply to every human or AI contributor working on ROOK.
 - Medium and Low findings are engineering judgments, but must be considered rather than ignored mechanically.
 - After material fixes, request/verify Qodo follow-up review against the final code.
 - Buddy Main verifies both CI and Qodo evidence before a substantive merge.
+- The human participant retains final merge authority.
 
 ## 2. Commit law
 
@@ -69,11 +70,21 @@ The Citadel Watch color grammar is semantic:
 
 Do not use gold for decoration on sensitive flows. Do not use green for progress, execution started, or optimistic status.
 
-## 7. Demo truth law
+## 7. Demo truth and authenticity law
 
-Simulated, fixture, or demo data must be clearly labeled until it is produced by the live TrueForge/MCP flow.
+**Never simulate proof. If a capability does not exist, remove the claim.**
 
-Never present mocked tool calls, sandbox work, approvals, or recovery evidence as live harness activity.
+Simulated, fixture, design-reference, or demo data must be clearly labeled until it is produced by the live TrueForge/MCP flow.
+
+Never present mocked tool calls, sandbox work, approvals, subagent outcomes, execution, verification, or recovery evidence as live harness activity.
+
+Every public functional claim must be no stronger than its retained evidence. Use the narrow verb that matches the earned state: observed, inferred, reproduced, proposed, authorized, applied, verified, candidate, or active.
+
+A capability moves through claim confidence deliberately:
+
+`design intent → implemented but not demonstrated → proven in an authentic run → cleared for public claim`
+
+When evidence is incomplete, narrow or remove the claim rather than making the presentation more persuasive.
 
 ## 8. Secrets and data law
 
@@ -105,3 +116,5 @@ Prefer executable guardrails over prose alone:
 - reviewer false positive → preserve the technical rationale; do not encode an incorrect workaround merely to satisfy a tool.
 
 A finding is not fully learned if the same class of mistake can silently recur.
+
+Durable learning does **not** grant standing authority. A verified lesson may produce a **Guardrail Candidate**, but a candidate that changes active enforcement policy remains inactive until separately authorized by a human with the exact policy diff, scope, and rollback visible. **Learning is not authority.**

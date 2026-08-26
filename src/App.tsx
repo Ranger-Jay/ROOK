@@ -18,13 +18,15 @@ const stages = ['Detect', 'Investigate', 'Delegate', 'Sandbox', 'Propose', 'Appr
 
 function BrandMark() {
   return (
-    <span className="brand-mark" aria-hidden="true">
-      <i className="bastion bastion-nw" />
-      <i className="bastion bastion-ne" />
-      <i className="bastion bastion-sw" />
-      <i className="bastion bastion-se" />
-      <i className="kernel" />
-    </span>
+    <svg className="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <g fill="var(--rook-cyan)">
+        <path d="M12 8H28V16H21L16 21V28H8V12L12 8Z" />
+        <path d="M36 8H52L56 12V28H48V21L43 16H36V8Z" />
+        <path d="M56 36V52L52 56H36V48H43L48 43V36H56Z" />
+        <path d="M28 56H12L8 52V36H16V43L21 48H28V56Z" />
+      </g>
+      <path d="M28 23H36L41 28V36L36 41H28L23 36V28L28 23Z" fill="var(--rook-violet)" />
+    </svg>
   )
 }
 

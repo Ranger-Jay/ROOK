@@ -33,12 +33,36 @@ Verified Green is a product/safety semantic, not decoration. Flag user-visible l
 
 Authorization must be explicit, narrowly scoped, short-lived, auditable, and consumed by the approved mutation path. Ambiguity fails closed.
 
+### 5. Learning is not policy authority
+
+A verified lesson may be stored or derived as a Guardrail Candidate, but a candidate that changes active enforcement policy must not become active merely because it was generated, verified, or recommended by ROOK.
+
+Flag as **High severity** any path that can activate privileged enforcement policy without a separate human authorization bound to the exact policy diff, scope, and rollback.
+
 ## TrueForge integration laws
 
 - TrueForge must do real harness work for sessions, MCP tools, sandbox execution, approvals, subagents, and context where ROOK claims those capabilities.
 - Fixture/simulated activity must remain clearly labeled until replaced by live harness events.
 - Never accept a UI-only simulation as evidence of a functioning TrueForge capability.
 - Sensitive tools must not rely solely on inferred destructive classification when metadata is absent or ambiguous.
+
+## Claim-to-evidence and authenticity laws
+
+ROOK's public communication follows `CLAIM → EVIDENCE → PUBLIC TRUTH`.
+
+Flag any README, UI, demo, screenshot, overlay, or submission statement whose verb or confidence exceeds the evidence represented by the current implementation.
+
+In particular:
+
+- observed signals must not be described as diagnosed causes;
+- correlations must not be described as causal proof without supporting evidence;
+- sandbox reproduction must not be described as production recovery;
+- proposals must not be described as approved or executed;
+- applied actions must not be described as verified recovery;
+- Guardrail Candidates must not be described as active policy;
+- fixtures, design references, or scripted text must not be described as live TrueForge output.
+
+If a capability is intentionally deferred, the correct remedy is to narrow/remove the claim or label it as future/design intent — not to simulate proof.
 
 ## Security laws
 
@@ -55,10 +79,10 @@ Flag as **High severity**:
 
 ## Domain and testing expectations
 
-For changes to incident lifecycle, authorization, remediation, or verification logic:
+For changes to incident lifecycle, authorization, remediation, verification, audit, or governed-learning logic:
 
 - require tests for allowed behavior and important fail-closed behavior;
-- specifically look for boundary conditions around timestamps, resource matching, one-time authorization, retries, duplicate events, and state transitions;
+- specifically look for boundary conditions around timestamps, resource matching, one-time authorization, retries, duplicate events, state transitions, evidence freshness, and policy activation;
 - prefer explicit domain invariants over UI-only guards.
 
 ## Lesson-to-guardrail expectation
