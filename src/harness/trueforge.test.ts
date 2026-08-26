@@ -52,6 +52,30 @@ describe('normalizeTrueForgeEvent', () => {
     expect(events[0]).toMatchObject({ type: 'agent.message.delta', text: 'Connection response received.' })
   })
 
+  it('accepts a documented metadata-only text finish without inventing an evidence event', () => {
+    expect(normalizeTrueForgeEvent(
+      {
+        ...base,
+        type: 'model.message.delta',
+        content: null,
+        finishReason: 'stop',
+        usage: { inputTokens: 12, outputTokens: 3 },
+      },
+      'sess_01',
+      '8',
+      observedAt,
+    )).toEqual([])
+  })
+
+  it('fails closed when a metadata-only finish implies a forbidden capability', () => {
+    expect(() => normalizeTrueForgeEvent(
+      { ...base, type: 'model.message.delta', content: null, finishReason: 'tool_calls' },
+      'sess_01',
+      '8',
+      observedAt,
+    )).toThrow(/unsupported model finish reason tool_calls/i)
+  })
+
   it('ignores unknown future events even when current common provenance fields are absent', () => {
     expect(normalizeTrueForgeEvent({ type: 'future.event', futureField: true }, 'sess_01', undefined, observedAt)).toEqual([])
   })

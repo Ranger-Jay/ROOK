@@ -93,6 +93,8 @@ const normalizeTerminalStatus = (value: unknown): 'done' | 'cancelled' | 'error'
   throw new HarnessProtocolError(`TrueForge turn.done carried unsupported status: ${String(value)}.`)
 }
 
+const textOnlyFinishReasons = new Set(['stop', 'length', 'content_filter'])
+
 const evidenceFor = (
   raw: UnknownRecord,
   sequence: string | undefined,
@@ -144,13 +146,25 @@ export function normalizeTrueForgeEvent(
         turnId: requireString(rawEvent, 'turn id', 'turnId', 'turn_id'),
       }]
 
-    case 'model.message.delta':
+    case 'model.message.delta': {
+      const finishReason = readString(rawEvent, 'finishReason', 'finish_reason')
+      if (finishReason && !textOnlyFinishReasons.has(finishReason)) {
+        throw new HarnessProtocolError(`v0.002 text-only session observed unsupported model finish reason ${finishReason}.`)
+      }
+
+      const text = readString(rawEvent, 'content')
+      if (!text) {
+        if (finishReason) return []
+        throw new HarnessProtocolError('TrueForge event is missing model-message delta content.')
+      }
+
       return [{
         ...evidence,
         type: 'agent.message.delta',
         sessionId,
-        text: requireString(rawEvent, 'model-message delta content', 'content'),
+        text,
       }]
+    }
 
     case 'tool.response':
       return [{
