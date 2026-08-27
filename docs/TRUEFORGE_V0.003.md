@@ -30,7 +30,7 @@ Run all components on the same local machine:
 
 - ROOK branch `feat/v0.003-mcp-readonly-investigation`;
 - Node.js compatible with the repository engine requirement;
-- local TrueForge on `http://127.0.0.1:8790`;
+- local TrueForge 0.1.3 on `http://127.0.0.1:8790`;
 - a model already configured in TrueForge that can issue function/tool calls;
 - the ROOK owned demo source on `127.0.0.1:8792`;
 - the ROOK read-only MCP server on `127.0.0.1:8791/mcp`.
@@ -89,36 +89,34 @@ npm run demo:source
 npm run demo:mcp
 ```
 
-Do not use the separate commands merely out of habit; `demo:stack` is the preferred capture path because it reduces setup drift and performs the health/truth checks automatically.
+`demo:stack` is the preferred capture path because it reduces setup drift and performs the health/truth checks automatically.
 
-## 3. Register the MCP server in TrueForge
+## 3. Configure and verify the TrueForge connector
 
-Open the local TrueForge UI:
+With local TrueForge 0.1.3 already running on `http://127.0.0.1:8790`, open a second terminal in the ROOK repository and run:
 
-```text
-http://127.0.0.1:8790
+```bash
+npm run demo:trueforge-setup
 ```
 
-Then use:
+This uses the pinned TrueForge 0.1.3 SDK/settings API. It is intentionally fail-closed:
 
-**Settings → Connectors → Add MCP Server**
+- if `rook-inventory-retry-storm` is absent, it creates exactly one no-auth remote connector for `http://127.0.0.1:8791/mcp`;
+- if the exact connector already exists, it reuses it without mutation;
+- if the same name exists with a different URL, description, auth mode, or manifest, it refuses to overwrite it;
+- it then asks TrueForge to list the connector's tools;
+- it requires the exact four-tool set, with no duplicate or unexpected tools;
+- every tool must retain `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, and `openWorldHint: false` through the TrueForge boundary.
 
-Enter exactly:
+Expected output ends with:
 
-| Field | Value |
-| --- | --- |
-| **Name** | `rook-inventory-retry-storm` |
-| **Description** | `ROOK owned non-production read-only Inventory Retry Storm evidence source` |
-| **URL** | `http://127.0.0.1:8791/mcp` |
-| **Auth type** | `None` |
+```text
+[rook:v0.003] TrueForge connector/tool preflight passed
+```
 
-Choose **Add**.
+This setup command changes only local TrueForge connector configuration when the connector is absent. It does **not** create a TrueForge session, run a model turn, call an MCP tool through an agent, use a sandbox, start a subagent, request approval, or mutate the owned incident source.
 
-The exact name matters. The v0.003 inline agent attaches the configured connector by the name `rook-inventory-retry-storm`; it does not carry the MCP URL or credentials in the agent definition.
-
-Do **not** select OAuth or API Key for this local owned server.
-
-If the connector already exists with the exact name and URL above, do not create a duplicate; verify the existing entry instead.
+If the command reports a mismatched existing connector, stop and inspect that local configuration. Do not use an upsert/overwrite workaround merely to make the proof proceed.
 
 ## 4. Confirm the local TrueForge model
 
@@ -126,7 +124,7 @@ Under **Settings → Models**, confirm the existing local model provider remains
 
 The model used for the authentic v0.003 capture must support tool/function calling. A model that only returns text will correctly fail the v0.003 evidence gate because ROOK requires correlated MCP call/response evidence and exactly one `get_retry_pressure` proof call.
 
-Do not change to a paid provider merely to satisfy this milestone unless Jay explicitly chooses to do so.
+Do not change to a paid provider merely to satisfy this milestone unless explicitly chosen.
 
 ## 5. Configure ROOK's non-secret local environment
 
@@ -141,7 +139,7 @@ VITE_TRUEFORGE_MODEL=<the exact model identifier configured in TrueForge>
 
 ## 6. Start ROOK
 
-Open a second terminal in the repository:
+In the same second terminal after the TrueForge setup command exits successfully, run:
 
 ```bash
 npm run dev
@@ -240,7 +238,9 @@ Retain screenshots/log evidence showing at minimum:
 - [ ] `npm run demo:stack` reports `proof stack ready` and `health/truth checks: passed`;
 - [ ] owned demo source is on `127.0.0.1:8792`;
 - [ ] owned read-only MCP server is on `127.0.0.1:8791/mcp`;
-- [ ] TrueForge connector named `rook-inventory-retry-storm` uses Auth type `None`;
+- [ ] `npm run demo:trueforge-setup` reports connector/tool preflight passed;
+- [ ] connector `rook-inventory-retry-storm` is no-auth and points exactly to `http://127.0.0.1:8791/mcp`;
+- [ ] TrueForge sees exactly the four positively read-only tools;
 - [ ] real TrueForge session ID;
 - [ ] exactly one `mcp.tool.called` for `get_retry_pressure`;
 - [ ] MCP server identity/provenance;
@@ -256,7 +256,7 @@ Do not commit local screenshots containing secrets or machine-specific sensitive
 
 ## Release rule
 
-A green test suite and a green `demo:stack` health check are **not** the authentic v0.003 proof.
+A green test suite, a green `demo:stack` health check, and a green TrueForge connector/tool preflight are **not** the authentic v0.003 proof.
 
 The release gate remains closed until the real local chain is observed:
 
