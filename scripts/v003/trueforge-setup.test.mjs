@@ -100,6 +100,16 @@ describe('ROOK v0.003 TrueForge connector setup', () => {
     expect(calls.listTools).toEqual([])
   })
 
+  it('rejects an otherwise-valid connector manifest with any extra field', async () => {
+    const expanded = exactConfigured()
+    expanded.manifest.transportOptions = { experimental: true }
+    const { client, calls } = fakeClient({ listed: [expanded] })
+
+    await expect(ensureV003TrueForgeConnector({ client })).rejects.toThrow(/does not exactly match/i)
+    expect(calls.create).toEqual([])
+    expect(calls.listTools).toEqual([])
+  })
+
   it('fails closed on duplicate or unexpected TrueForge tool inventory', async () => {
     const duplicate = exactTools()
     duplicate[3] = { ...duplicate[2] }
