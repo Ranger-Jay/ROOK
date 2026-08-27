@@ -56,9 +56,9 @@ function App() {
 
         <div className="sidebar-spacer" />
         <div className="sidebar-status">
-          <span>TRUEFORGE · v0.002</span>
-          <strong>Local harness evidence boundary</strong>
-          <small>Live session/turn evidence is separated from the fixture incident scenario.</small>
+          <span>TRUEFORGE · v0.003</span>
+          <strong>Governed read-only MCP boundary</strong>
+          <small>Live owned-demo observations are promoted only from correlated MCP evidence. All other incident fields remain fixture data.</small>
         </div>
       </aside>
 
@@ -68,7 +68,7 @@ function App() {
             <span className="crumb">Incidents / INC-2048</span>
           </div>
           <div className="topbar-state">
-            <span className="fixture-pill">FIXTURE INCIDENT DATA · v0.002-dev</span>
+            <span className="fixture-pill">FIXTURE INCIDENT DATA · v0.003-dev</span>
             <span className="operator">JAY · ADMIN</span>
           </div>
         </header>
@@ -76,9 +76,9 @@ function App() {
         <div className="content">
           <section className="incident-heading">
             <div>
-              <span className="eyebrow">Fixture incident workspace</span>
+              <span className="eyebrow">Fixture workspace · explicit live-evidence inserts</span>
               <h1>Inventory Retry Storm</h1>
-              <p>This owned fixture scenario frames the product workflow. It is not promoted to live telemetry by a successful TrueForge harness observation.</p>
+              <p>This owned scenario remains fixture data except where ROOK explicitly marks an observation as evidence-backed from the running non-production demo source through TrueForge and read-only MCP.</p>
             </div>
             <div className="elapsed">
               <span>Fixture incident time</span>
@@ -121,7 +121,7 @@ function App() {
             </article>
 
             <article className="panel agents-panel">
-              <header><span>Delegated investigators</span><small>FIXTURE · 4 agents</small></header>
+              <header><span>Delegated investigators</span><small>FIXTURE · future workflow</small></header>
               <div className="agent-list">
                 {agents.map((agent) => (
                   <div className="agent" key={agent.name}>
@@ -134,11 +134,11 @@ function App() {
             </article>
 
             <article className="panel sandbox-panel">
-              <header><span>Sandbox boundary</span><small>DESIGN · isolated</small></header>
+              <header><span>Sandbox boundary</span><small>DESIGN · v0.004</small></header>
               <div className="sandbox-box">
                 <span>TRUEFORGE SANDBOX</span>
-                <strong>Reproduction pending</strong>
-                <p>Agent-written diagnostics will run here in v0.004.</p>
+                <strong>Not enabled in v0.003</strong>
+                <p>Agent-written diagnostics remain a future milestone.</p>
               </div>
               <div className="production-lock">
                 <span>PRODUCTION · LOCKED</span>
@@ -160,8 +160,8 @@ function App() {
           </section>
 
           <section className="safety-note">
-            <div className="safety-rule"><span>SAFETY LAW</span><strong>Applied ≠ verified.</strong></div>
-            <p>ROOK can investigate autonomously. It cannot mutate demo-production without explicit human authorization, and execution cannot become recovery until evidence-backed verification passes.</p>
+            <div className="safety-rule"><span>SAFETY LAW</span><strong>Observed ≠ inferred.</strong></div>
+            <p>ROOK may investigate this owned demo through positively classified read-only MCP tools. It cannot use sandbox, subagents, approvals, or mutation authority in v0.003, and a causal conclusion remains inferred unless its retained evidence chain is shown.</p>
           </section>
         </div>
       </main>
