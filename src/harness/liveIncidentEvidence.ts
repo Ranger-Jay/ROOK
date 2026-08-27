@@ -1,7 +1,6 @@
 import type { HarnessEvent } from './adapter'
 
 type McpToolCalledEvent = Extract<HarnessEvent, { type: 'mcp.tool.called' }>
-type McpToolReturnedEvent = Extract<HarnessEvent, { type: 'mcp.tool.returned' }>
 type UnknownRecord = Record<string, unknown>
 
 export interface CorrelatedMcpEvidence {
