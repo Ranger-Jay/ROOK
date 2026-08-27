@@ -19,6 +19,13 @@ import {
 
 export const ROOK_V003_MCP_SERVER_NAME = 'rook-inventory-retry-storm'
 
+export const ROOK_V003_READ_ONLY_TOOL_NAMES = Object.freeze([
+  'get_service_health',
+  'get_retry_pressure',
+  'get_deployment_history',
+  'get_dependency_topology',
+] as const)
+
 export const ROOK_V003_MCP_ATTACHMENT = Object.freeze({
   name: ROOK_V003_MCP_SERVER_NAME,
   enableTools: Object.freeze(['@read-only'] as const),
@@ -94,6 +101,229 @@ export class V003SdkTrueForgeTransport implements TrueForgeTransport {
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : 'Unknown TrueForge transport error.'
 
 type HarnessSubscriber = (event: HarnessEvent) => void
+type UnknownRecord = Record<string, unknown>
+type McpToolCalledEvent = Extract<HarnessEvent, { type: 'mcp.tool.called' }>
+
+const allowedReadOnlyToolNames = new Set<string>(ROOK_V003_READ_ONLY_TOOL_NAMES)
+const allowedV003FinishReasons = new Set(['stop', 'length', 'content_filter', 'tool_calls'])
+
+const isRecord = (value: unknown): value is UnknownRecord => typeof value === 'object' && value !== null && !Array.isArray(value)
+const hasOwn = (record: UnknownRecord, key: string): boolean => Object.prototype.hasOwnProperty.call(record, key)
+
+const readString = (record: UnknownRecord, ...keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim().length > 0) return value
+  }
+  return undefined
+}
+
+const readRawString = (record: UnknownRecord, ...keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'string') return value
+  }
+  return undefined
+}
+
+const readRecord = (record: UnknownRecord, ...keys: string[]): UnknownRecord | undefined => {
+  for (const key of keys) {
+    const value = record[key]
+    if (isRecord(value)) return value
+  }
+  return undefined
+}
+
+const readThreadId = (record: UnknownRecord): string | null | undefined => {
+  if (hasOwn(record, 'threadId')) {
+    const value = record.threadId
+    if (value === null) return null
+    return typeof value === 'string' ? value : undefined
+  }
+  const value = record.thread_id
+  if (value === null) return null
+  return typeof value === 'string' ? value : undefined
+}
+
+const requireString = (record: UnknownRecord, description: string, ...keys: string[]): string => {
+  const value = readString(record, ...keys)
+  if (!value) throw new HarnessProtocolError(`TrueForge event is missing ${description}.`)
+  return value
+}
+
+const requireRawString = (record: UnknownRecord, description: string, ...keys: string[]): string => {
+  const value = readRawString(record, ...keys)
+  if (value === undefined) throw new HarnessProtocolError(`TrueForge event is missing ${description}.`)
+  return value
+}
+
+const readOptionalArray = (record: UnknownRecord, description: string, ...keys: string[]): unknown[] | undefined => {
+  for (const key of keys) {
+    if (!hasOwn(record, key)) continue
+    const value = record[key]
+    if (!Array.isArray(value)) throw new HarnessProtocolError(`TrueForge ${description} is not an array.`)
+    return value
+  }
+  return undefined
+}
+
+const v003EvidenceFor = (
+  raw: UnknownRecord,
+  sequence: string | undefined,
+  observedAt: string,
+  requireTimestamp = false,
+) => ({
+  source: 'trueforge' as const,
+  sourceEventId: requireString(raw, 'event id', 'id'),
+  sourceTimestamp: requireTimestamp
+    ? requireString(raw, 'source timestamp', 'createdAt', 'created_at')
+    : readString(raw, 'createdAt', 'created_at'),
+  observedAt,
+  sequence,
+  threadId: readThreadId(raw),
+})
+
+const normalizeV003ModelMessage = (
+  raw: UnknownRecord,
+  sessionId: string,
+  sequence: string | undefined,
+  observedAt: string,
+): HarnessEvent[] => {
+  const toolCalls = readOptionalArray(raw, 'model.message toolCalls', 'toolCalls', 'tool_calls')
+  if (!toolCalls || toolCalls.length === 0) return []
+
+  const evidence = v003EvidenceFor(raw, sequence, observedAt, true)
+  const threadId = requireString(raw, 'model.message thread id', 'threadId', 'thread_id')
+
+  return toolCalls.map((candidate, index) => {
+    if (!isRecord(candidate)) {
+      throw new HarnessProtocolError(`TrueForge model.message tool call ${index} is not an object.`)
+    }
+
+    const callId = requireString(candidate, `tool call ${index} id`, 'id')
+    const callType = requireString(candidate, `tool call ${index} type`, 'type')
+    if (callType !== 'function') {
+      throw new HarnessProtocolError(`v0.003 observed unsupported tool call type ${callType} for ${callId}.`)
+    }
+
+    const functionCall = readRecord(candidate, 'function')
+    if (!functionCall) throw new HarnessProtocolError(`TrueForge tool call ${callId} is missing function metadata.`)
+    const name = requireString(functionCall, `tool call ${callId} function name`, 'name')
+    const args = requireRawString(functionCall, `tool call ${callId} serialized arguments`, 'arguments')
+
+    const toolInfo = readRecord(candidate, 'toolInfo', 'tool_info')
+    if (!toolInfo) throw new HarnessProtocolError(`TrueForge tool call ${callId} is missing toolInfo provenance.`)
+    const toolInfoType = requireString(toolInfo, `tool call ${callId} toolInfo type`, 'type')
+    if (toolInfoType !== 'mcp') {
+      throw new HarnessProtocolError(`v0.003 observed non-MCP tool call ${callId} (${toolInfoType}).`)
+    }
+
+    const serverId = requireString(toolInfo, `tool call ${callId} MCP server id`, 'serverId', 'server_id')
+    const serverName = requireString(toolInfo, `tool call ${callId} MCP server name`, 'serverName', 'server_name')
+    const toolInfoName = requireString(toolInfo, `tool call ${callId} MCP tool name`, 'name')
+
+    if (serverName !== ROOK_V003_MCP_SERVER_NAME) {
+      throw new HarnessProtocolError(`v0.003 observed tool call ${callId} from unexpected MCP server ${serverName}.`)
+    }
+    if (toolInfoName !== name) {
+      throw new HarnessProtocolError(`v0.003 tool call ${callId} carried conflicting tool names ${name} and ${toolInfoName}.`)
+    }
+    if (!allowedReadOnlyToolNames.has(name)) {
+      throw new HarnessProtocolError(`v0.003 observed tool ${name} outside the owned read-only inventory.`)
+    }
+
+    return {
+      ...evidence,
+      threadId,
+      type: 'mcp.tool.called' as const,
+      sessionId,
+      callId,
+      name,
+      arguments: args,
+      serverId,
+      serverName,
+    }
+  })
+}
+
+const normalizeV003ModelDelta = (
+  raw: UnknownRecord,
+  sessionId: string,
+  sequence: string | undefined,
+  observedAt: string,
+): HarnessEvent[] => {
+  const finishReason = readString(raw, 'finishReason', 'finish_reason')
+  if (finishReason && !allowedV003FinishReasons.has(finishReason)) {
+    throw new HarnessProtocolError(`v0.003 observed unsupported model finish reason ${finishReason}.`)
+  }
+
+  const toolCallDeltas = readOptionalArray(raw, 'model.message.delta toolCalls', 'toolCalls', 'tool_calls')
+  const contentBlocks = readOptionalArray(raw, 'model.message.delta content blocks', 'contentBlocks', 'content_blocks')
+  const content = readRawString(raw, 'content')
+
+  if (content !== undefined && content.length > 0) {
+    return [{
+      ...v003EvidenceFor(raw, sequence, observedAt),
+      type: 'agent.message.delta',
+      sessionId,
+      text: content,
+    }]
+  }
+
+  if (
+    finishReason
+    || toolCallDeltas
+    || contentBlocks
+    || readRawString(raw, 'reasoningContent', 'reasoning_content') !== undefined
+    || readRawString(raw, 'refusal') !== undefined
+  ) {
+    return []
+  }
+
+  throw new HarnessProtocolError('TrueForge model.message.delta contained no retainable v0.003 content or metadata.')
+}
+
+const normalizeV003ToolResponse = (
+  raw: UnknownRecord,
+  sessionId: string,
+  sequence: string | undefined,
+  observedAt: string,
+): HarnessEvent[] => [{
+  ...v003EvidenceFor(raw, sequence, observedAt, true),
+  threadId: requireString(raw, 'tool.response thread id', 'threadId', 'thread_id'),
+  type: 'mcp.tool.returned',
+  sessionId,
+  callId: requireString(raw, 'tool.response tool call id', 'toolCallId', 'tool_call_id'),
+  content: requireRawString(raw, 'tool.response content', 'content'),
+}]
+
+/**
+ * v0.003 retains settled model.message tool calls instead of reconstructing
+ * fragmented tool-call deltas. Tool arguments and tool responses remain raw
+ * serialized strings; ROOK does not invent parsed semantics at this boundary.
+ */
+export function normalizeV003TrueForgeEvent(
+  rawEvent: unknown,
+  sessionId: string,
+  sequence?: string,
+  observedAt = new Date().toISOString(),
+): HarnessEvent[] {
+  if (!isRecord(rawEvent)) throw new HarnessProtocolError('TrueForge stream yielded a non-object event.')
+  const type = requireString(rawEvent, 'event type', 'type')
+
+  switch (type) {
+    case 'model.message':
+      return normalizeV003ModelMessage(rawEvent, sessionId, sequence, observedAt)
+    case 'model.message.delta':
+      return normalizeV003ModelDelta(rawEvent, sessionId, sequence, observedAt)
+    case 'tool.response':
+      return normalizeV003ToolResponse(rawEvent, sessionId, sequence, observedAt)
+    case 'tool.response_required':
+      throw new HarnessProtocolError('v0.003 does not permit user-supplied tool responses.')
+    default:
+      return normalizeTrueForgeEvent(rawEvent, sessionId, sequence, observedAt)
+  }
+}
 
 export const buildV003ReadOnlyInstructions = (request: IncidentSessionRequest): string => [
   'You are the ROOK v0.003 read-only incident investigation agent.',
@@ -107,7 +337,8 @@ export const buildV003ReadOnlyInstructions = (request: IncidentSessionRequest): 
   `Objective: ${request.objective}`,
 ].join('\n')
 
-const forbiddenPreCorrelationEventTypes = new Set<HarnessEvent['type']>([
+const forbiddenV003EventTypes = new Set<HarnessEvent['type']>([
+  'tool.returned',
   'sandbox.started',
   'subagent.started',
   'subagent.completed',
@@ -115,32 +346,25 @@ const forbiddenPreCorrelationEventTypes = new Set<HarnessEvent['type']>([
   'mcp.authorization.required',
 ])
 
-const assertV003PreCorrelationBoundary = (event: HarnessEvent): void => {
-  if (event.type === 'tool.returned') {
-    throw new HarnessProtocolError(
-      `v0.003 MCP tool response ${event.sourceEventId} arrived before call/response correlation support is enabled.`,
-    )
-  }
-
-  if (forbiddenPreCorrelationEventTypes.has(event.type)) {
+const assertV003CapabilityBoundary = (event: HarnessEvent): void => {
+  if (forbiddenV003EventTypes.has(event.type)) {
     throw new HarnessProtocolError(
       `v0.003 read-only investigation observed forbidden capability event ${event.type} (${event.sourceEventId}).`,
     )
   }
 
-  if (event.type === 'turn.completed' && event.requiredActionCount !== 0) {
-    throw new HarnessProtocolError(
-      `v0.003 read-only turn observed ${event.requiredActionCount} required action(s) at ${event.sourceEventId}.`,
-    )
+  if (event.type === 'turn.completed') {
+    if (event.requiredActionCount !== 0) {
+      throw new HarnessProtocolError(
+        `v0.003 read-only turn observed ${event.requiredActionCount} required action(s) at ${event.sourceEventId}.`,
+      )
+    }
+    if (event.status !== 'done') {
+      throw new HarnessProtocolError(`v0.003 investigation ended with non-success terminal status ${event.status}.`)
+    }
   }
 }
 
-/**
- * Attachment-stage adapter. Tool execution is intentionally fail-closed until
- * the following v0.003 slice can retain and correlate model tool calls with
- * tool.response evidence. This prevents an uncorrelated response from becoming
- * public truth merely because the MCP server is already attached.
- */
 export class V003TrueForgeHarnessAdapter implements RookHarnessAdapter {
   private state: HarnessConnectionState = 'disconnected'
   private readonly subscribers = new Map<string, Set<HarnessSubscriber>>()
@@ -184,22 +408,60 @@ export class V003TrueForgeHarnessAdapter implements RookHarnessAdapter {
   async runTurn(request: TurnRequest): Promise<void> {
     this.state = 'connecting'
     let terminalEventCount = 0
+    let correlatedMcpResponseCount = 0
+    const pendingMcpCalls = new Map<string, McpToolCalledEvent>()
+    const completedMcpCallIds = new Set<string>()
 
     try {
       for await (const item of this.transport.streamTurn(request.sessionId, request.instruction)) {
-        const events = normalizeTrueForgeEvent(item.event, request.sessionId, item.sequence, this.now())
+        const events = normalizeV003TrueForgeEvent(item.event, request.sessionId, item.sequence, this.now())
         for (const event of events) {
-          assertV003PreCorrelationBoundary(event)
-          if (event.type === 'turn.completed') terminalEventCount += 1
-          if (terminalEventCount > 1) {
-            throw new HarnessProtocolError('TrueForge stream contained more than one terminal turn event.')
+          if (terminalEventCount > 0) {
+            throw new HarnessProtocolError(`TrueForge stream emitted ${event.type} after terminal turn.done evidence.`)
           }
+
+          assertV003CapabilityBoundary(event)
+
+          if (event.type === 'mcp.tool.called') {
+            if (pendingMcpCalls.has(event.callId) || completedMcpCallIds.has(event.callId)) {
+              throw new HarnessProtocolError(`TrueForge stream repeated MCP tool call id ${event.callId}.`)
+            }
+            pendingMcpCalls.set(event.callId, event)
+          } else if (event.type === 'mcp.tool.returned') {
+            const call = pendingMcpCalls.get(event.callId)
+            if (!call) {
+              if (completedMcpCallIds.has(event.callId)) {
+                throw new HarnessProtocolError(`TrueForge stream repeated MCP tool response for ${event.callId}.`)
+              }
+              throw new HarnessProtocolError(`TrueForge tool.response ${event.sourceEventId} has no retained tool call ${event.callId}.`)
+            }
+            if (call.threadId !== event.threadId) {
+              throw new HarnessProtocolError(`TrueForge MCP call/response thread mismatch for ${event.callId}.`)
+            }
+            pendingMcpCalls.delete(event.callId)
+            completedMcpCallIds.add(event.callId)
+            correlatedMcpResponseCount += 1
+          } else if (event.type === 'turn.completed') {
+            if (pendingMcpCalls.size > 0) {
+              throw new HarnessProtocolError(
+                `TrueForge turn.done arrived with ${pendingMcpCalls.size} MCP tool call(s) lacking tool.response evidence.`,
+              )
+            }
+            terminalEventCount += 1
+          }
+
           this.emit(request.sessionId, event)
         }
       }
 
       if (terminalEventCount !== 1) {
         throw new HarnessProtocolError('TrueForge stream ended before one terminal turn.done event was observed.')
+      }
+      if (pendingMcpCalls.size !== 0) {
+        throw new HarnessProtocolError('TrueForge stream ended with uncorrelated MCP tool calls.')
+      }
+      if (correlatedMcpResponseCount === 0) {
+        throw new HarnessProtocolError('v0.003 investigation ended without any correlated MCP tool evidence.')
       }
 
       this.state = 'ready'

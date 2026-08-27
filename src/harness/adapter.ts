@@ -12,6 +12,16 @@ export interface HarnessEventEvidence {
 export type HarnessEvent = HarnessEventEvidence & (
   | { type: 'turn.started'; sessionId: string; turnId: string }
   | { type: 'agent.message.delta'; sessionId: string; text: string }
+  | {
+      type: 'mcp.tool.called'
+      sessionId: string
+      callId: string
+      name: string
+      arguments: string
+      serverId: string
+      serverName: string
+    }
+  | { type: 'mcp.tool.returned'; sessionId: string; callId: string; content: string }
   | { type: 'tool.returned'; sessionId: string; callId: string }
   | { type: 'sandbox.started'; sessionId: string; sandboxId: string }
   | { type: 'subagent.started'; sessionId: string; role: string; taskId: string }
