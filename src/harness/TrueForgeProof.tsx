@@ -46,6 +46,10 @@ const eventDetail = (event: HarnessEvent): string => {
       return `turn ${event.turnId}`
     case 'agent.message.delta':
       return event.text
+    case 'mcp.tool.called':
+      return `${event.serverName} · ${event.name} · call ${event.callId}`
+    case 'mcp.tool.returned':
+      return `MCP response · call ${event.callId}`
     case 'turn.completed':
       return `terminal ${event.status} · required actions ${event.requiredActionCount}`
     case 'error':
