@@ -70,12 +70,14 @@ const assertTrueForgeToolInventory = (tools) => {
 
   const expectedNames = ROOK_V003_MCP_TOOL_SPECS.map(({ name }) => name)
   const actualNames = tools.map((tool) => tool?.name)
+  const actualNameSet = new Set(actualNames)
   if (
     actualNames.length !== expectedNames.length
-    || expectedNames.some((name, index) => actualNames[index] !== name)
+    || actualNameSet.size !== actualNames.length
+    || expectedNames.some((name) => !actualNameSet.has(name))
   ) {
     throw new Error(
-      `TrueForge ROOK MCP tool inventory drifted; expected ${expectedNames.join(', ')}, received ${actualNames.join(', ')}.`,
+      `TrueForge ROOK MCP tool inventory drifted; expected exactly {${expectedNames.join(', ')}}, received {${actualNames.join(', ')}}.`,
     )
   }
 
