@@ -48,13 +48,16 @@ All notable ROOK milestones are documented here.
 - Authentic local execution on Windows proved `ROOK UI → governed Vite proxy → official TrueForge SDK 0.1.3 → local TrueForge 0.1.3 → ollama-local/qwen2-5-1-5b → streamed turn`.
 - Capture evidence recorded authentic session `01m10cfv36zfmvh8n61gw0cmmp`, exactly one terminal `turn.done`, terminal source ID `01m10cmypg6k494xst43sz6qwp`, and explicit separation of `FIXTURE INCIDENT DATA` from live harness evidence.
 - The capture exposed two narrow runtime-truth corrections: finish-only delta handling (`7598eb67beea115efcf4fdd56f743de66a7cf2a4`) and authentic terminal-event presentation (`d08d7d2b1a29b9c597ec33fb7050fbcfede96109`).
-- Exact-head CI run #40 passed canonical token synchronization, unit tests, TypeScript checks, and production build on `d08d7d2b1a29b9c597ec33fb7050fbcfede96109`.
-- Qodo follow-up on that exact substantive head reported no remaining High/Medium merge blocker and confirmed no v0.002 authority widening.
+- Substantive-head CI run #40 passed canonical token synchronization, unit tests, TypeScript checks, and production build on `d08d7d2b1a29b9c597ec33fb7050fbcfede96109`.
+- Qodo follow-up on that substantive head reported no remaining High/Medium merge blocker and confirmed no v0.002 authority widening.
+- The release-only commits then promoted `VERSION` to `v0.002` and recorded the release evidence without modifying production code, tests, runtime configuration, capability boundaries, or authority logic.
+- Final release-head CI run #42 passed canonical token synchronization, unit tests, TypeScript checks, and production build on `b3f697911be804a571a823f7f9eed8c3e851cfa1`.
+- Qodo re-reviewed that release head, reported no High/Medium blocker from the release-only changes, confirmed all nine original findings implemented, and cleared PR #5 for Jay's human merge decision.
 - All nine original Qodo inline review threads are resolved.
 
 ### Status
 
-The substantive v0.002 implementation and authentic proof passed the release gate. The dedicated release marker has been promoted from `v0.002-dev` to `v0.002`; PR #5 remains subject to final exact-head CI/Qodo verification after the release-only commits and Jay's human merge decision before the milestone becomes merged `main` history.
+The substantive v0.002 implementation, authentic local proof, release marker promotion, final release-head CI, and Qodo release-head review have passed. PR #5 now awaits Jay's human merge decision before the milestone becomes merged `main` history.
 
 ## v0.001 — 2026-08-26
 
