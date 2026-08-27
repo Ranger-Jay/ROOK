@@ -65,6 +65,9 @@ const eventDetail = (event: HarnessEvent): string => {
   }
 }
 
+export const evidenceEventLabel = (event: HarnessEvent): string =>
+  event.type === 'turn.completed' ? 'turn.done' : event.type
+
 export default function TrueForgeProof() {
   const configuration = useMemo(() => resolveHarnessRuntimeConfiguration({
     VITE_TRUEFORGE_URL: import.meta.env.VITE_TRUEFORGE_URL,
@@ -175,7 +178,7 @@ export default function TrueForgeProof() {
                 {recentEvents.map((event, index) => (
                   <li key={`${event.sourceEventId}-${event.sequence ?? index}`}>
                     <div>
-                      <strong>{event.type}</strong>
+                      <strong>{evidenceEventLabel(event)}</strong>
                       <span>{eventDetail(event)}</span>
                     </div>
                     <code>{event.sourceEventId}</code>
