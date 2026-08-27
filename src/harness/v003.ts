@@ -409,6 +409,7 @@ export class V003TrueForgeHarnessAdapter implements RookHarnessAdapter {
     this.state = 'connecting'
     let terminalEventCount = 0
     let correlatedMcpResponseCount = 0
+    let retryPressureCallCount = 0
     const pendingMcpCalls = new Map<string, McpToolCalledEvent>()
     const completedMcpCallIds = new Set<string>()
 
@@ -426,6 +427,7 @@ export class V003TrueForgeHarnessAdapter implements RookHarnessAdapter {
             if (pendingMcpCalls.has(event.callId) || completedMcpCallIds.has(event.callId)) {
               throw new HarnessProtocolError(`TrueForge stream repeated MCP tool call id ${event.callId}.`)
             }
+            if (event.name === 'get_retry_pressure') retryPressureCallCount += 1
             pendingMcpCalls.set(event.callId, event)
           } else if (event.type === 'mcp.tool.returned') {
             const call = pendingMcpCalls.get(event.callId)
@@ -462,6 +464,11 @@ export class V003TrueForgeHarnessAdapter implements RookHarnessAdapter {
       }
       if (correlatedMcpResponseCount === 0) {
         throw new HarnessProtocolError('v0.003 investigation ended without any correlated MCP tool evidence.')
+      }
+      if (retryPressureCallCount !== 1) {
+        throw new HarnessProtocolError(
+          `v0.003 proof requires exactly one get_retry_pressure call; observed ${retryPressureCallCount}.`,
+        )
       }
 
       this.state = 'ready'
