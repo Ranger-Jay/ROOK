@@ -81,6 +81,15 @@ describe('ROOK v0.003 TrueForge connector setup', () => {
     expect(calls.listTools).toEqual([ROOK_V003_TRUEFORGE_MCP_MANIFEST.name])
   })
 
+  it('accepts the exact read-only tool set regardless of list order', async () => {
+    const tools = exactTools().reverse()
+    const { client } = fakeClient({ listed: [exactConfigured()], tools })
+
+    await expect(ensureV003TrueForgeConnector({ client })).resolves.toMatchObject({
+      disposition: 'reused',
+    })
+  })
+
   it('fails closed instead of overwriting a mismatched existing connector', async () => {
     const mismatched = exactConfigured()
     mismatched.manifest.url = 'http://127.0.0.1:9999/mcp'
@@ -89,6 +98,21 @@ describe('ROOK v0.003 TrueForge connector setup', () => {
     await expect(ensureV003TrueForgeConnector({ client })).rejects.toThrow(/refusing to overwrite/i)
     expect(calls.create).toEqual([])
     expect(calls.listTools).toEqual([])
+  })
+
+  it('fails closed on duplicate or unexpected TrueForge tool inventory', async () => {
+    const duplicate = exactTools()
+    duplicate[3] = { ...duplicate[2] }
+    const duplicateClient = fakeClient({ listed: [exactConfigured()], tools: duplicate }).client
+    await expect(ensureV003TrueForgeConnector({ client: duplicateClient })).rejects.toThrow(/tool inventory drifted/i)
+
+    const unexpected = exactTools()
+    unexpected[3] = {
+      ...unexpected[3],
+      name: 'delete_inventory',
+    }
+    const unexpectedClient = fakeClient({ listed: [exactConfigured()], tools: unexpected }).client
+    await expect(ensureV003TrueForgeConnector({ client: unexpectedClient })).rejects.toThrow(/tool inventory drifted/i)
   })
 
   it('fails closed when TrueForge does not retain the positive read-only tool annotations', async () => {
