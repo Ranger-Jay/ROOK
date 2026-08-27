@@ -11,6 +11,7 @@
     "demo:source": "node scripts/v003/source-server.mjs",
     "demo:mcp": "node scripts/v003/mcp-server.mjs",
     "demo:stack": "node scripts/v003/proof-stack.mjs",
+    "demo:trueforge-setup": "node scripts/v003/trueforge-setup.mjs",
     "tokens:generate": "node scripts/generate-tokens.mjs",
     "tokens:check": "node scripts/generate-tokens.mjs --check",
     "build": "tsc -b && vite build",
