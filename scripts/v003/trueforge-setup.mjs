@@ -16,6 +16,8 @@ export const ROOK_V003_TRUEFORGE_MCP_MANIFEST = Object.freeze({
   description: 'ROOK owned non-production read-only Inventory Retry Storm evidence source',
 })
 
+const EXACT_MANIFEST_KEYS = Object.freeze(Object.keys(ROOK_V003_TRUEFORGE_MCP_MANIFEST).sort())
+
 export function assertLocalTrueForgeUrl(candidate = DEFAULT_TRUEFORGE_URL) {
   let parsed
   try {
@@ -40,23 +42,29 @@ export function assertLocalTrueForgeUrl(candidate = DEFAULT_TRUEFORGE_URL) {
   return parsed.origin
 }
 
+const hasExactManifestKeys = (manifest) => {
+  const keys = Object.keys(manifest).sort()
+  return keys.length === EXACT_MANIFEST_KEYS.length
+    && keys.every((key, index) => key === EXACT_MANIFEST_KEYS[index])
+}
+
 const assertConfiguredConnector = (configured) => {
   if (!configured || typeof configured !== 'object') {
     throw new Error('TrueForge returned no configured ROOK MCP connector.')
   }
 
   const manifest = configured.manifest
-  if (!manifest || typeof manifest !== 'object') {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
     throw new Error('TrueForge ROOK MCP connector omitted its manifest.')
   }
 
   if (
-    configured.name !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.name
+    !hasExactManifestKeys(manifest)
+    || configured.name !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.name
     || manifest.type !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.type
     || manifest.name !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.name
     || manifest.url !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.url
     || manifest.description !== ROOK_V003_TRUEFORGE_MCP_MANIFEST.description
-    || manifest.auth !== undefined
     || configured.authStatus?.status !== 'not_required'
   ) {
     throw new Error(
