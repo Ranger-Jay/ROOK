@@ -1,3 +1,5 @@
+import TrueForgeProof from './harness/TrueForgeProof'
+
 const nav = ['Overview', 'Incidents', 'Topology', 'Agents', 'Sandboxes', 'Approvals', 'Audit trail']
 
 const metrics = [
@@ -54,9 +56,9 @@ function App() {
 
         <div className="sidebar-spacer" />
         <div className="sidebar-status">
-          <span>TRUEFORGE</span>
-          <strong>Adapter lands in v0.002</strong>
-          <small>Current screen uses labeled fixture data.</small>
+          <span>TRUEFORGE · v0.002</span>
+          <strong>Local harness evidence boundary</strong>
+          <small>Live session/turn evidence is separated from the fixture incident scenario.</small>
         </div>
       </aside>
 
@@ -66,7 +68,7 @@ function App() {
             <span className="crumb">Incidents / INC-2048</span>
           </div>
           <div className="topbar-state">
-            <span className="fixture-pill">FIXTURE PREVIEW · v0.001</span>
+            <span className="fixture-pill">FIXTURE INCIDENT DATA · v0.002-dev</span>
             <span className="operator">JAY · ADMIN</span>
           </div>
         </header>
@@ -74,23 +76,25 @@ function App() {
         <div className="content">
           <section className="incident-heading">
             <div>
-              <span className="eyebrow">Active incident workspace</span>
+              <span className="eyebrow">Fixture incident workspace</span>
               <h1>Inventory Retry Storm</h1>
-              <p>ROOK is investigating propagation and preparing a bounded recovery plan.</p>
+              <p>This owned fixture scenario frames the product workflow. It is not promoted to live telemetry by a successful TrueForge harness observation.</p>
             </div>
             <div className="elapsed">
-              <span>Elapsed incident time</span>
+              <span>Fixture incident time</span>
               <strong>00:18:42</strong>
             </div>
           </section>
 
-          <section className="fault-card" aria-label="Active fault summary">
+          <TrueForgeProof />
+
+          <section className="fault-card" aria-label="Fixture active fault summary">
             <div className="fault-title">
               <span className="status-dot" />
-              <strong>SEV-1 · Active fault source: inventory-reservation</strong>
-              <span className="confidence">ROOK confidence · 91% high</span>
+              <strong>SEV-1 · Fixture fault source: inventory-reservation</strong>
+              <span className="confidence">FIXTURE CONFIDENCE · 91%</span>
             </div>
-            <p>Aggressive retry behavior is creating queue and cache pressure, increasing checkout latency and failures.</p>
+            <p>Fixture evidence models aggressive retry behavior creating queue and cache pressure, increasing checkout latency and failures.</p>
             <div className="metric-grid">
               {metrics.map((metric) => (
                 <article className={`metric metric-${metric.tone}`} key={metric.label}>
@@ -104,8 +108,8 @@ function App() {
 
           <section className="command-grid">
             <article className="panel topology-panel">
-              <header><span>Blast-radius topology</span><small>5 services · 4 confirmed paths</small></header>
-              <div className="topology" role="img" aria-label="Dependency graph from inventory-reservation through queue and cache pressure to checkout">
+              <header><span>Blast-radius topology</span><small>FIXTURE · 5 services · 4 paths</small></header>
+              <div className="topology" role="img" aria-label="Fixture dependency graph from inventory-reservation through queue and cache pressure to checkout">
                 <span className="edge edge-a" /><span className="edge edge-b" /><span className="edge edge-c" />
                 <div className="node node-source"><b>IR</b><small>inventory</small></div>
                 <div className="node node-warning"><b>Q</b><small>queue</small></div>
@@ -117,7 +121,7 @@ function App() {
             </article>
 
             <article className="panel agents-panel">
-              <header><span>Delegated investigators</span><small>4 agents</small></header>
+              <header><span>Delegated investigators</span><small>FIXTURE · 4 agents</small></header>
               <div className="agent-list">
                 {agents.map((agent) => (
                   <div className="agent" key={agent.name}>
@@ -130,7 +134,7 @@ function App() {
             </article>
 
             <article className="panel sandbox-panel">
-              <header><span>Sandbox boundary</span><small>isolated</small></header>
+              <header><span>Sandbox boundary</span><small>DESIGN · isolated</small></header>
               <div className="sandbox-box">
                 <span>TRUEFORGE SANDBOX</span>
                 <strong>Reproduction pending</strong>
@@ -145,7 +149,7 @@ function App() {
           </section>
 
           <section className="panel progression-panel">
-            <header><span>Incident progression</span><small>Current · investigate</small></header>
+            <header><span>Incident progression</span><small>FIXTURE · current investigate</small></header>
             <ol className="progression">
               {stages.map((stage, index) => (
                 <li className={index === 0 ? 'done' : index === 1 ? 'current' : index === 5 ? 'authority' : ''} key={stage}>
