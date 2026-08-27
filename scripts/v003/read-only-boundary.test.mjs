@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  INVENTORY_RETRY_STORM_SOURCE,
-  createInventoryRetryStormSource,
+  INVENTORY_RETRY_STORM_DEMO_SOURCE,
+  createInventoryRetryStormDemoSource,
 } from './incident-source.mjs'
 import {
   ROOK_V003_MCP_TOOL_SPECS,
@@ -32,7 +32,7 @@ describe('ROOK v0.003 owned read-only MCP boundary', () => {
   })
 
   it('serves all evidence reads without mutating the owned scenario state', () => {
-    const source = createInventoryRetryStormSource({ clock: () => FIXED_TIME })
+    const source = createInventoryRetryStormDemoSource({ clock: () => FIXED_TIME })
     const before = source.snapshotForVerification()
 
     const observations = [
@@ -46,8 +46,8 @@ describe('ROOK v0.003 owned read-only MCP boundary', () => {
     expect(source.snapshotForVerification()).toEqual(before)
 
     for (const observation of observations) {
-      expect(observation.source.system).toBe(INVENTORY_RETRY_STORM_SOURCE.system)
-      expect(observation.source.scenarioId).toBe(INVENTORY_RETRY_STORM_SOURCE.scenarioId)
+      expect(observation.source.system).toBe(INVENTORY_RETRY_STORM_DEMO_SOURCE.system)
+      expect(observation.source.scenarioId).toBe(INVENTORY_RETRY_STORM_DEMO_SOURCE.scenarioId)
       expect(observation.source.sourceTimestamp).toBe(FIXED_TIME)
       expect(observation.source.observationWindow).toEqual({
         start: '2026-08-27T03:55:00.000Z',
@@ -57,7 +57,7 @@ describe('ROOK v0.003 owned read-only MCP boundary', () => {
   })
 
   it('returns detached evidence copies so callers cannot mutate future observations', () => {
-    const source = createInventoryRetryStormSource({ clock: () => FIXED_TIME })
+    const source = createInventoryRetryStormDemoSource({ clock: () => FIXED_TIME })
     const first = source.getServiceHealth('inventory-api')
     first.data.status = 'tampered-by-caller'
     first.data.errorRatePct = 0

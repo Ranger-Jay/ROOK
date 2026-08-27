@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import {
   INVENTORY_RETRY_STORM_SERVICES,
-  createInventoryRetryStormSource,
+  createInventoryRetryStormDemoSource,
 } from './incident-source.mjs'
 
 const DEFAULT_PORT = 8792
@@ -35,7 +35,7 @@ const hostAllowed = (hostHeader, port) => {
 
 export function createOwnedDemoSourceHttpServer({
   port = DEFAULT_PORT,
-  source = createInventoryRetryStormSource(),
+  source = createInventoryRetryStormDemoSource(),
 } = {}) {
   return createServer((req, res) => {
     if (!hostAllowed(req.headers.host, port)) {
@@ -55,6 +55,7 @@ export function createOwnedDemoSourceHttpServer({
         writeJson(res, 200, {
           status: 'ok',
           boundary: 'rook-owned-demo-source',
+          classification: 'owned-demo-non-production',
           services: INVENTORY_RETRY_STORM_SERVICES,
         })
         return

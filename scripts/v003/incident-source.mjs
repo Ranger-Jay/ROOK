@@ -1,5 +1,6 @@
 const SOURCE_SYSTEM = 'rook-owned-demo-source'
 const SCENARIO_ID = 'inventory-retry-storm-v1'
+const DEMO_CLASSIFICATION = 'owned-demo-non-production'
 
 const scenarioState = Object.freeze({
   services: Object.freeze({
@@ -91,6 +92,7 @@ const envelope = (kind, data, clock) => {
     source: {
       system: SOURCE_SYSTEM,
       scenarioId: SCENARIO_ID,
+      classification: DEMO_CLASSIFICATION,
       kind,
       sourceTimestamp,
       observationWindow: observationWindowFor(sourceTimestamp),
@@ -99,14 +101,19 @@ const envelope = (kind, data, clock) => {
   }
 }
 
-export const INVENTORY_RETRY_STORM_SOURCE = Object.freeze({
+export const INVENTORY_RETRY_STORM_DEMO_SOURCE = Object.freeze({
   system: SOURCE_SYSTEM,
   scenarioId: SCENARIO_ID,
+  classification: DEMO_CLASSIFICATION,
 })
 
 export const INVENTORY_RETRY_STORM_SERVICES = Object.freeze(Object.keys(scenarioState.services))
 
-export function createInventoryRetryStormSource({ clock = () => new Date().toISOString() } = {}) {
+/**
+ * Creates the owned, deterministic, non-production demo evidence provider for v0.003.
+ * Its observations are authentic reads from the running demo boundary, not production telemetry.
+ */
+export function createInventoryRetryStormDemoSource({ clock = () => new Date().toISOString() } = {}) {
   return Object.freeze({
     getServiceHealth(service = 'inventory-api') {
       const health = scenarioState.services[service]
