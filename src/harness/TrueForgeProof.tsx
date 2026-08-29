@@ -8,6 +8,7 @@ import {
   ROOK_V004_SANDBOX_INTENT,
 } from './v004'
 import './trueforge-proof.css'
+import './v004-proof.css'
 
 type ProofStatus = 'unconfigured' | 'idle' | 'connecting' | 'reproduced' | 'failed'
 
