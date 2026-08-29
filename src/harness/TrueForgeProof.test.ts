@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { HarnessEvent } from './adapter'
-import { V004_PROOF_INSTRUCTION, evidenceEventLabel } from './TrueForgeProof'
+import {
+  V004_PROOF_INSTRUCTION,
+  evidenceEventLabel,
+  shouldPromoteReproducedEvidence,
+} from './TrueForgeProof'
 import {
   ROOK_V004_SANDBOX_COMMAND,
   ROOK_V004_SANDBOX_INTENT,
@@ -30,6 +34,14 @@ describe('TrueForge v0.004 proof truth boundary', () => {
     expect(V004_PROOF_INSTRUCTION).toContain('REPRODUCED evidence only')
     expect(V004_PROOF_INSTRUCTION).toContain('not applied remediation or verified recovery')
     expect(V004_PROOF_INSTRUCTION).toContain('Do not supply cwd, env, files, network requests')
+  })
+
+  it('promotes the REPRODUCED claim card only after the whole proof reaches its final reproduced state', () => {
+    expect(shouldPromoteReproducedEvidence('reproduced')).toBe(true)
+    expect(shouldPromoteReproducedEvidence('failed')).toBe(false)
+    expect(shouldPromoteReproducedEvidence('connecting')).toBe(false)
+    expect(shouldPromoteReproducedEvidence('idle')).toBe(false)
+    expect(shouldPromoteReproducedEvidence('unconfigured')).toBe(false)
   })
 
   it('retains distinct public labels for sandbox creation, execution, and return evidence', () => {
