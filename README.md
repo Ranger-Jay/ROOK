@@ -211,7 +211,7 @@ Auth type: None
 ### 5. Configure the non-secret ROOK local environment
 
 ```text
-VITE_TRUEFORGE_URL=http://127.0.0.1:8790
+VITE_TRUEFORGE_URL=http://localhost:8790
 VITE_TRUEFORGE_MODEL=<exact configured TrueForge model identifier>
 ```
 
