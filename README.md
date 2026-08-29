@@ -19,7 +19,7 @@ npm install
 npm test
 ```
 
-That runs the same checks CI runs: canonical design-token synchronization, the unit suite, TypeScript, and the production build.
+`npm test` runs the unit suite. For the remaining CI checks, run `npm run tokens:check` and `npm run build`.
 
 - **Representative merged pull request** (hackathon submission requirement): [PR #5 — v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into `main`.
 - **Active review trail, open and not merged:** [PR #7 — v0.003 owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
