@@ -126,7 +126,7 @@ describe('ROOK v0.003 TrueForge authority contract', () => {
     expect(ROOK_V003_MCP_ATTACHMENT).toEqual({
       name: 'rook-inventory-retry-storm',
       enableTools: ['@read-only'],
-      preload: false,
+      preload: true,
     })
     expect(Object.isFrozen(ROOK_V003_MCP_ATTACHMENT)).toBe(true)
     expect(Object.isFrozen(ROOK_V003_MCP_ATTACHMENT.enableTools)).toBe(true)

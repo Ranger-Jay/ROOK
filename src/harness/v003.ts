@@ -1,4 +1,4 @@
-import { TrueForge } from '@truefoundry/trueforge-sdk'
+import { TrueForge, isEventDelta, mergeEventDelta, type TrueForgeApi } from '@truefoundry/trueforge-sdk'
 import type {
   HarnessConnectionState,
   HarnessEvent,
@@ -29,7 +29,7 @@ export const ROOK_V003_READ_ONLY_TOOL_NAMES = Object.freeze([
 export const ROOK_V003_MCP_ATTACHMENT = Object.freeze({
   name: ROOK_V003_MCP_SERVER_NAME,
   enableTools: Object.freeze(['@read-only'] as const),
-  preload: false,
+  preload: true,
 })
 
 export const ROOK_V003_RUNTIME_GUARDRAILS = Object.freeze({
@@ -88,12 +88,46 @@ export class V003SdkTrueForgeTransport implements TrueForgeTransport {
     const stream = await this.client.sessions.createTurnStream(sessionId, {
       input: [{ type: 'user.message', content: instruction }],
     })
+    const pendingModelMessages = new Map<string, TrueForgeApi.ModelMessageEvent>()
 
     for await (const item of stream.withMetadata()) {
-      yield {
-        event: item.data,
-        sequence: item.id == null ? undefined : String(item.id),
+      const event = item.data
+      const sequence = item.id == null ? undefined : String(item.id)
+
+      if (isEventDelta(event)) {
+        const base = pendingModelMessages.get(event.id)
+        if (!base) {
+          throw new HarnessProtocolError(
+            `TrueForge model.message.delta ${event.id} arrived without its base model.message.`,
+          )
+        }
+        mergeEventDelta(base, event)
+        if (base.finishReason != null) {
+          yield { event: base, sequence }
+          pendingModelMessages.delete(event.id)
+        }
+        continue
       }
+
+      if (event.type === 'model.message') {
+        if (pendingModelMessages.has(event.id)) {
+          throw new HarnessProtocolError(`TrueForge repeated model.message base ${event.id}.`)
+        }
+        pendingModelMessages.set(event.id, event)
+        if (event.finishReason != null) {
+          yield { event, sequence }
+          pendingModelMessages.delete(event.id)
+        }
+        continue
+      }
+
+      yield { event, sequence }
+    }
+
+    if (pendingModelMessages.size > 0) {
+      throw new HarnessProtocolError(
+        `TrueForge stream ended with ${pendingModelMessages.size} unsettled model.message event(s).`,
+      )
     }
   }
 }
