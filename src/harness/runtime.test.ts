@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { UnconfiguredHarnessAdapter } from './adapter'
 import { createHarnessAdapter, resolveHarnessRuntimeConfiguration } from './runtime'
-import { V003TrueForgeHarnessAdapter } from './v003'
+import { V004TrueForgeHarnessAdapter } from './v004'
 
 describe('resolveHarnessRuntimeConfiguration', () => {
   it('stays explicitly unconfigured when no live values are present', () => {
@@ -58,11 +58,11 @@ describe('createHarnessAdapter', () => {
     expect(createHarnessAdapter({ mode: 'unconfigured', reason: 'missing' })).toBeInstanceOf(UnconfiguredHarnessAdapter)
   })
 
-  it('constructs the v0.003 governed live adapter only from a validated local configuration', () => {
+  it('constructs the v0.004 sandbox-reproduction adapter only from a validated local configuration', () => {
     expect(createHarnessAdapter({
       mode: 'configured',
       baseUrl: 'http://127.0.0.1:8790',
       modelName: 'provider/model',
-    })).toBeInstanceOf(V003TrueForgeHarnessAdapter)
+    })).toBeInstanceOf(V004TrueForgeHarnessAdapter)
   })
 })
