@@ -8,6 +8,24 @@ It is designed around one operational contract:
 
 > **Investigate autonomously. Mutate only with human authority. Verify recovery with evidence.**
 
+## For judges
+
+ROOK is an approval-gated AI incident commander built on TrueForge for the 2026 Agent Harness Hackathon. It is designed so that no incident claim reaches the interface unless retained harness evidence supports it; everything else stays visibly labeled `FIXTURE`.
+
+Verify the build with no TrueForge installation and no network calls to a model:
+
+```bash
+npm install
+npm test
+```
+
+`npm test` runs the unit suite. For the remaining CI checks, run `npm run tokens:check` and `npm run build`.
+
+- **Representative merged pull request** (hackathon submission requirement): [PR #5 — v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into `main`.
+- **Active review trail, open and not merged:** [PR #7 — v0.003 owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
+
+`main` carries released milestones only. `VERSION` on `main` is `v0.002`: a real local TrueForge session and streamed-turn evidence boundary. Owned read-only MCP investigation is in development on PR #7 and is not claimed as released here.
+
 The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack saturates shared infrastructure, degrades checkout, and requires ROOK to investigate, reproduce the fault safely, propose a bounded remediation, stop for human authorization, execute only the approved action, and independently verify recovery.
 
 ## ROOK Truth Doctrine
@@ -34,7 +52,7 @@ For governed learning, a verified lesson may become a **Guardrail Candidate**. A
 
 ## Current milestone
 
-`v0.002-dev` — real local TrueForge session/turn boundary, evidence normalization, and live harness-proof surface.
+`v0.002` — real local TrueForge session/turn boundary, evidence normalization, and live harness-proof surface. Released and merged into `main`.
 
 The implementation is intentionally narrower than the finished ROOK vision:
 
@@ -161,7 +179,8 @@ See [`AGENTS.md`](./AGENTS.md) and [`docs/VERSIONING.md`](./docs/VERSIONING.md) 
 - **Initial review-chain verification:** [PR #2 — chore: verify Qodo review workflow](https://github.com/Ranger-Jay/ROOK/pull/2). This was intentionally non-substantive and closed without merge after Qodo automatically completed its review with no material findings.
 - **v0.001 foundation:** [PR #3 — v0.001 foundation, safety contract, and command shell](https://github.com/Ranger-Jay/ROOK/pull/3). Qodo identified real lifecycle and provenance failure modes around authorization replay/binding, one-time authorization claims, evidence-backed verification, and audit provenance. The valid findings became fail-closed invariants and regression tests. Qodo's follow-up review on the final PR head reported no remaining High-severity blocker before merge.
 - **v0.001 visual integration:** [PR #4 — Citadel Watch v1.1](https://github.com/Ranger-Jay/ROOK/pull/4). Qodo identified runtime brand-token drift; the fix moved the runtime mark back onto semantic design tokens. Final review reported no High- or Medium-severity blocker before merge.
-- **v0.002 TrueForge runtime:** [PR #5](https://github.com/Ranger-Jay/ROOK/pull/5) is the active review trail. Early review findings around provenance, truncated streams, local URL credentials, malformed known events, and evidence vocabulary are being converted into regression-tested invariants before release promotion.
+- **v0.002 TrueForge runtime — representative merged pull request:** [PR #5 — v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into `main`. Qodo's initial review reported eight bugs and one evidence-vocabulary rule violation, including High-severity findings around unknown-event compatibility, fabricated session provenance, and incomplete-stream readiness. Each valid finding was fixed on the branch in dedicated `fix:`/`test:` commits and converted into regression coverage rather than review-only commentary; Qodo's follow-up review on the final head reported no remaining High/Medium merge blocker before merge.
+- **v0.003 read-only MCP investigation — active review trail, open and not merged:** [PR #7 — v0.003 owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7). Qodo raised a non-production data-labeling rule violation, a proof-contract gap where the stated `get_retry_pressure` exactly-once requirement was not enforced by the adapter, and a Medium finding where existing-connector validation did not reject extra manifest properties. Each was accepted, fixed, regression-locked, and re-reviewed on the exact head; Qodo's most recent follow-up review reported no remaining High/Medium release blocker.
 
 The public PR discussion is the canonical evidence trail; screenshots may supplement it but do not replace it.
 
@@ -171,4 +190,4 @@ AI coding and design assistants are used as development collaborators. Material 
 
 ## Status
 
-Active hackathon development. `v0.002-dev` is implemented on PR #5 but remains pre-release until final CI/Qodo review and authentic local TrueForge capture satisfy the milestone evidence gate.
+Active hackathon development. `main` carries the released `v0.002` milestone, merged through [PR #5](https://github.com/Ranger-Jay/ROOK/pull/5). The v0.003 owned read-only MCP investigation milestone is implemented on [PR #7](https://github.com/Ranger-Jay/ROOK/pull/7) and remains pre-release until its own milestone evidence gate is satisfied.
