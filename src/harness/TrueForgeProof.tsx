@@ -60,6 +60,10 @@ const eventDetail = (event: HarnessEvent): string => {
       return `unexpected tool call ${event.callId}`
     case 'sandbox.started':
       return `unexpected sandbox ${event.sandboxId}`
+    case 'sandbox.exec.called':
+      return `sandbox exec · call ${event.callId}`
+    case 'sandbox.exec.returned':
+      return `correlated sandbox response · call ${event.callId}`
     case 'subagent.started':
       return `unexpected subagent ${event.role}`
     case 'subagent.completed':
