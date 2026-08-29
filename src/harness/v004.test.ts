@@ -171,7 +171,17 @@ describe('ROOK v0.004 sandbox evidence contract', () => {
     expect(() => assertV004SandboxExecArguments(JSON.stringify({
       intent: ROOK_V004_SANDBOX_INTENT,
       command: ROOK_V004_SANDBOX_COMMAND,
-      cwd: '/tmp',
+      cwd: '/tmp/code-sandbox',
+    }))).toThrow(/exactly intent and command/i)
+    expect(() => assertV004SandboxExecArguments(JSON.stringify({
+      intent: ROOK_V004_SANDBOX_INTENT,
+      command: ROOK_V004_SANDBOX_COMMAND,
+      env: null,
+    }))).toThrow(/exactly intent and command/i)
+    expect(() => assertV004SandboxExecArguments(JSON.stringify({
+      intent: ROOK_V004_SANDBOX_INTENT,
+      command: ROOK_V004_SANDBOX_COMMAND,
+      env: {},
     }))).toThrow(/exactly intent and command/i)
     expect(() => assertV004SandboxExecArguments(JSON.stringify({
       intent: ROOK_V004_SANDBOX_INTENT,
@@ -194,6 +204,9 @@ describe('ROOK v0.004 sandbox evidence contract', () => {
     expect(instructions).toContain('get_retry_pressure exactly once')
     expect(instructions).toContain('OBSERVED owned-demo evidence')
     expect(instructions).toContain('sandbox exec tool exactly once')
+    expect(instructions).toContain('sandbox exec arguments JSON must be exactly')
+    expect(instructions).toContain('OMIT cwd entirely. OMIT env entirely.')
+    expect(instructions).toContain('Never serialize optional sandbox fields as null.')
     expect(instructions).toContain('REPRODUCED evidence')
     expect(instructions).toContain('not production observation, applied remediation, or verified recovery')
   })

@@ -32,7 +32,7 @@ export const ROOK_V004_REPRODUCTION_INPUT = Object.freeze({
   queueDepth: 7200,
   queueSaturationPct: 91,
 } as const)
-export const ROOK_V004_SANDBOX_COMMAND = `python -c "import json; a=${ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute}; b=${ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute}; q=${ROOK_V004_REPRODUCTION_INPUT.queueDepth}; s=${ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct}; print(json.dumps({'kind':'rook-v004-reproduction','retryMultiplier':round(a/b,1),'attemptsPerMinute':a,'baselineAttemptsPerMinute':b,'queueDepth':q,'queueSaturationPct':s},separators=(',',':')))"`
+export const ROOK_V004_SANDBOX_COMMAND = `python -c 'import json; a=${ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute}; b=${ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute}; q=${ROOK_V004_REPRODUCTION_INPUT.queueDepth}; s=${ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct}; print(json.dumps({"kind":"rook-v004-reproduction","retryMultiplier":round(a/b,1),"attemptsPerMinute":a,"baselineAttemptsPerMinute":b,"queueDepth":q,"queueSaturationPct":s},separators=(",",":")))'`
 
 export const ROOK_V004_RUNTIME_GUARDRAILS = Object.freeze({
   iterationLimit: 16,
@@ -360,7 +360,9 @@ export const buildV004SandboxInstructions = (request: IncidentSessionRequest): s
   'Then call the TrueForge sandbox exec tool exactly once to reproduce the retry-pressure arithmetic.',
   `The sandbox exec intent must be exactly: ${ROOK_V004_SANDBOX_INTENT}`,
   `The sandbox exec command must be exactly: ${ROOK_V004_SANDBOX_COMMAND}`,
-  'Do not supply cwd, env, files, network requests, package installation, subprocess expansion, or any other sandbox command.',
+  `The sandbox exec arguments JSON must be exactly: ${JSON.stringify({ intent: ROOK_V004_SANDBOX_INTENT, command: ROOK_V004_SANDBOX_COMMAND })}`,
+  'OMIT cwd entirely. OMIT env entirely. Never serialize optional sandbox fields as null.',
+  'Do not supply files, network requests, package installation, subprocess expansion, or any other sandbox command.',
   'Treat sandbox output as REPRODUCED evidence, not production observation, applied remediation, or verified recovery.',
   'Dynamic subagents, ask-user-question tools, Generative UI, skills, approval, and mutation are outside this milestone.',
   `Incident: ${request.incidentId} — ${request.title}.`,
