@@ -7,6 +7,7 @@ import type {
   RookHarnessAdapter,
   TurnRequest,
 } from './adapter'
+import { projectObservedRetryPressure } from './liveIncidentEvidence'
 import { assertTrueForgeSdkBaseUrl } from './localProxy'
 import {
   ROOK_V003_MCP_ATTACHMENT,
@@ -24,7 +25,14 @@ import {
 export const ROOK_V004_SANDBOX_TOOL_NAME = 'exec' as const
 export const ROOK_V004_SANDBOX_TOOL_INFO_TYPE = 'truefoundry-system' as const
 export const ROOK_V004_SANDBOX_INTENT = 'Reproduce retry-pressure arithmetic from the observed owned-demo values.'
-export const ROOK_V004_SANDBOX_COMMAND = `python -c "import json; a=4800; b=900; q=7200; s=91; print(json.dumps({'kind':'rook-v004-reproduction','retryMultiplier':round(a/b,1),'attemptsPerMinute':a,'baselineAttemptsPerMinute':b,'queueDepth':q,'queueSaturationPct':s},separators=(',',':')))"`
+export const ROOK_V004_REPRODUCTION_INPUT = Object.freeze({
+  attemptsPerMinute: 4800,
+  baselineAttemptsPerMinute: 900,
+  retryMultiplier: 5.3,
+  queueDepth: 7200,
+  queueSaturationPct: 91,
+} as const)
+export const ROOK_V004_SANDBOX_COMMAND = `python -c "import json; a=${ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute}; b=${ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute}; q=${ROOK_V004_REPRODUCTION_INPUT.queueDepth}; s=${ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct}; print(json.dumps({'kind':'rook-v004-reproduction','retryMultiplier':round(a/b,1),'attemptsPerMinute':a,'baselineAttemptsPerMinute':b,'queueDepth':q,'queueSaturationPct':s},separators=(',',':')))"`
 
 export const ROOK_V004_RUNTIME_GUARDRAILS = Object.freeze({
   iterationLimit: 16,
@@ -42,6 +50,7 @@ export interface V004TrueForgeHarnessAdapterConfig {
 type HarnessSubscriber = (event: HarnessEvent) => void
 type UnknownRecord = Record<string, unknown>
 type McpToolCalledEvent = Extract<HarnessEvent, { type: 'mcp.tool.called' }>
+type McpToolReturnedEvent = Extract<HarnessEvent, { type: 'mcp.tool.returned' }>
 type SandboxExecCalledEvent = Extract<HarnessEvent, { type: 'sandbox.exec.called' }>
 export type V004ToolCallKind = 'mcp' | 'sandbox'
 
@@ -186,13 +195,45 @@ export function assertV004SandboxExecResponseContent(content: string): void {
   }
   if (
     reproduction.kind !== 'rook-v004-reproduction'
-    || reproduction.retryMultiplier !== 5.3
-    || reproduction.attemptsPerMinute !== 4800
-    || reproduction.baselineAttemptsPerMinute !== 900
-    || reproduction.queueDepth !== 7200
-    || reproduction.queueSaturationPct !== 91
+    || reproduction.retryMultiplier !== ROOK_V004_REPRODUCTION_INPUT.retryMultiplier
+    || reproduction.attemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute
+    || reproduction.baselineAttemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute
+    || reproduction.queueDepth !== ROOK_V004_REPRODUCTION_INPUT.queueDepth
+    || reproduction.queueSaturationPct !== ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct
   ) {
     throw new HarnessProtocolError('v0.004 sandbox exec result did not reproduce the expected owned-demo retry-pressure values.')
+  }
+}
+
+const assertObservedRetryPressureMatchesReproductionContract = (
+  call: McpToolCalledEvent,
+  response: McpToolReturnedEvent,
+): void => {
+  const observed = projectObservedRetryPressure({
+    callId: call.callId,
+    name: call.name,
+    serverId: call.serverId,
+    serverName: call.serverName,
+    arguments: call.arguments,
+    responseContent: response.content,
+    callSourceEventId: call.sourceEventId,
+    responseSourceEventId: response.sourceEventId,
+    callSourceTimestamp: call.sourceTimestamp,
+    responseSourceTimestamp: response.sourceTimestamp,
+  })
+
+  if (!observed) {
+    throw new HarnessProtocolError('v0.004 get_retry_pressure response did not pass the owned-demo OBSERVED evidence projector.')
+  }
+
+  if (
+    observed.attemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute
+    || observed.baselineAttemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute
+    || observed.retryMultiplier !== ROOK_V004_REPRODUCTION_INPUT.retryMultiplier
+    || observed.sharedQueueDepth !== ROOK_V004_REPRODUCTION_INPUT.queueDepth
+    || observed.sharedQueueSaturationPct !== ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct
+  ) {
+    throw new HarnessProtocolError('v0.004 OBSERVED retry-pressure values do not match the deterministic reproduction input contract.')
   }
 }
 
@@ -503,7 +544,10 @@ export class V004TrueForgeHarnessAdapter implements RookHarnessAdapter {
             pendingMcpCalls.delete(event.callId)
             completedCallIds.add(event.callId)
             correlatedMcpResponseCount += 1
-            if (call.name === 'get_retry_pressure') retryPressureObserved = true
+            if (call.name === 'get_retry_pressure') {
+              assertObservedRetryPressureMatchesReproductionContract(call, event)
+              retryPressureObserved = true
+            }
           } else if (event.type === 'sandbox.exec.called') {
             if (!retryPressureObserved || pendingMcpCalls.size > 0) {
               throw new HarnessProtocolError('v0.004 sandbox reproduction began before the observed retry-pressure MCP evidence was fully correlated.')
