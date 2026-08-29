@@ -22,13 +22,13 @@ npm test
 `npm test` runs the unit suite. For the remaining CI checks, run `npm run tokens:check` and `npm run build`.
 
 - **Representative merged pull request** (hackathon submission requirement): [PR #5 - v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into main.
-- **Active review trail, open and not merged:** [PR #7 - v0.003 owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
+- **v0.003 review/release trail:** [PR #7 - owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
 
-main carries released milestones only. VERSION on main is v0.002. PR #7 is v0.003-dev: authentic local MCP proof has passed, while final exact-head CI/Qodo review and the human release/merge decision are still pending.
+ROOK releases milestones through reviewed pull requests. PR #7 carries `v0.003`: authentic local MCP proof passed, the final substantive code passed exact-head CI and Qodo review, and human release authority was granted before the release metadata was promoted.
 
-Current v0.003 proof is intentionally narrower: owned demo source -> read-only MCP -> TrueForge model tool call -> correlated tool.response -> evidence-backed UI. Sandbox, subagents, approval, mutation, remediation, and recovery remain future milestones and are not claimed by v0.003.
+Current v0.003 proof is intentionally narrow: owned demo source -> read-only MCP -> TrueForge model tool call -> correlated tool.response -> evidence-backed UI. Sandbox, subagents, approval, mutation, remediation, and recovery remain later milestones and are not claimed by v0.003.
 
-The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack creates retry pressure on shared infrastructure. ROOK is being built milestone-by-milestone so every public capability claim has a real evidence chain behind it.
+The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack creates retry pressure on shared infrastructure. ROOK is built milestone-by-milestone so every public capability claim has a real evidence chain behind it.
 
 ## ROOK Truth Doctrine
 
@@ -55,7 +55,7 @@ Fixture and reference surfaces remain labeled until authentic TrueForge evidence
 
 ## Current milestone
 
-`v0.003-dev` — owned read-only MCP incident investigation and evidence correlation.
+`v0.003` — owned read-only MCP incident investigation and evidence correlation.
 
 ### Released baseline: v0.002
 
@@ -69,11 +69,11 @@ PR #5 established and authentically demonstrated:
 - fail-closed handling of malformed or unexpected capability events;
 - explicit separation between live harness evidence and fixture incident data.
 
-v0.002 is now the released baseline on `main`.
+v0.002 remains the historical released baseline from which v0.003 was developed.
 
 ### Implemented on v0.003 PR #7
 
-ROOK now contains an owned non-production demo evidence stack:
+ROOK contains an owned non-production demo evidence stack:
 
 ```text
 owned demo source :8792
@@ -109,9 +109,10 @@ The TrueForge v0.003 agent attaches only the configured server `rook-inventory-r
 
 ```text
 enableTools: ["@read-only"]
+preload: true
 ```
 
-and explicitly disables unrelated default capabilities:
+Eager preload is required for the verified local Qwen tool-call path, but authority remains bounded by the named connector and positive `@read-only` selector. Unrelated default capabilities remain disabled:
 
 - sandbox;
 - dynamic subagents;
@@ -124,7 +125,7 @@ and explicitly disables unrelated default capabilities:
 
 A text response is not enough.
 
-The live investigation can pass only after ROOK retains and correlates:
+The live investigation passes only after ROOK retains and correlates:
 
 1. a settled TrueForge `model.message` MCP tool call;
 2. its call ID, tool name, server identity, raw arguments, thread, source event ID/timestamp, and stream sequence;
@@ -147,15 +148,15 @@ Only then may the UI display the observed retry-pressure card. All surrounding i
 
 ## Release status
 
-v0.003 is **implemented but not yet released**.
+v0.003 has satisfied its substantive release gates:
 
-The release gate remains closed until an authentic local run demonstrates:
+- authentic local proof demonstrated `owned demo source → MCP → TrueForge tool call → tool.response → ROOK retained evidence → evidence-backed UI`;
+- the feature branch was reconciled with current `main` and remained mergeable;
+- the final substantive head passed CI;
+- Qodo reported 0 bugs, 0 rule violations, and 0 skill findings, with the earlier Medium finding resolved;
+- human release authority was explicitly granted.
 
-`owned demo source → MCP → TrueForge tool call → tool.response → ROOK retained evidence → evidence-backed UI`
-
-Passing unit tests or CI does not substitute for that capture.
-
-After authentic capture, PR #7 still requires exact-head CI/Qodo review and Jay's human release/merge decision before `VERSION` can move from `v0.003-dev` to `v0.003`.
+`VERSION` is therefore promoted to `v0.003`. The release metadata commit is rechecked by CI/Qodo before PR #7 is merged into `main`.
 
 ## Run the v0.003 local proof
 
@@ -171,44 +172,30 @@ High-level local topology:
 npm install
 ```
 
-### 2. Start the owned demo source
+### 2. Start the owned proof stack
 
 ```bash
-npm run demo:source
+npm run demo:stack
 ```
 
-Source:
+This starts and verifies:
 
 ```text
-http://127.0.0.1:8792
+owned demo source: http://127.0.0.1:8792
+read-only MCP:     http://127.0.0.1:8791/mcp
 ```
 
-### 3. Start the read-only MCP server
+### 3. Configure the TrueForge connector
+
+With TrueForge 0.1.3 running locally, use:
 
 ```bash
-npm run demo:mcp
+ROOK_TRUEFORGE_URL=http://localhost:8790 npm run demo:trueforge-setup
 ```
 
-MCP endpoint:
+The helper validates/creates the exact no-auth connector manifest. TrueForge 0.1.3 on the verified Windows runtime does not expose the SDK connector-tools listing route, so the helper does not use that unavailable endpoint. The owned MCP inventory is independently verified by `demo:stack`, while the authentic TrueForge turn proves the connector/model can invoke the bounded tool surface.
 
-```text
-http://127.0.0.1:8791/mcp
-```
-
-### 4. Register the MCP connector in TrueForge
-
-Use:
-
-**Settings → Connectors → Add MCP Server**
-
-```text
-Name: rook-inventory-retry-storm
-Description: ROOK owned non-production read-only Inventory Retry Storm evidence source
-URL: http://127.0.0.1:8791/mcp
-Auth type: None
-```
-
-### 5. Configure the non-secret ROOK local environment
+### 4. Configure the non-secret ROOK local environment
 
 ```text
 VITE_TRUEFORGE_URL=http://localhost:8790
@@ -217,7 +204,7 @@ VITE_TRUEFORGE_MODEL=<exact configured TrueForge model identifier>
 
 Never place API keys, tokens, passwords, or other credentials in `VITE_*` variables.
 
-### 6. Start ROOK
+### 5. Start ROOK
 
 ```bash
 npm run dev
@@ -225,14 +212,14 @@ npm run dev
 
 In the ROOK command surface choose **Run read-only investigation**.
 
-A successful authentic capture must show `LIVE READ-ONLY MCP EVIDENCE`, the evidence-backed retry-pressure card, source event provenance, and exactly one terminal `turn.done`.
+A successful authentic capture shows `LIVE READ-ONLY MCP EVIDENCE`, the evidence-backed retry-pressure card, source event provenance, and exactly one terminal `turn.done`.
 
 ## Milestone sequence
 
 - **v0.001** — domain/safety foundation and command shell
 - **v0.002** — authentic TrueForge session/turn boundary ✅
-- **v0.003** — owned read-only MCP investigation and live incident evidence ← current
-- **v0.004** — sandbox reproduction and delegated investigators
+- **v0.003** — owned read-only MCP investigation and live incident evidence ✅
+- **v0.004** — sandbox reproduction and delegated investigators ← next
 - **v0.005** — human approval and bounded authorized remediation
 - **v0.006** — independent recovery verification and audit trail
 
@@ -252,6 +239,8 @@ Current authentic/implemented boundaries include:
 - model/source event provenance;
 - owned MCP attachment by configured connector name;
 - positive `@read-only` tool selection;
+- bounded eager preload for the verified local model path;
+- official SDK folding of streamed model-message deltas before normalization;
 - retained MCP tool-call provenance;
 - retained `tool.response` evidence;
 - one-to-one call/response correlation;
@@ -294,14 +283,14 @@ See [`AGENTS.md`](./AGENTS.md), [`REVIEW.md`](./REVIEW.md), and [`docs/VERSIONIN
 - **PR #3** — v0.001 foundation. Qodo findings around authorization replay/binding, one-time claims, evidence-backed verification, and audit provenance became regression-tested invariants.
 - **PR #4** — Citadel Watch integration. Qodo found runtime token drift; the fix restored semantic design-token use.
 - **PR #5** — v0.002 TrueForge runtime. Qodo findings around provenance, terminal streams, local credential boundaries, malformed events, and truth vocabulary became code/test guardrails before authentic proof and merge.
-- **PR #7** — active v0.003 read-only MCP investigation review trail. The first Qodo Medium finding identified inadequate code-level demo labeling; it was accepted, fixed, regression-locked, and resolved.
+- **PR #7** — v0.003 read-only MCP investigation and release trail. The first Qodo Medium finding identified inadequate code-level demo labeling; it was accepted, fixed, regression-locked, and resolved. The final substantive review reported no remaining findings.
 
 The public PR discussion is the canonical review evidence trail. Screenshots supplement it but do not replace it.
 
 ## AI assistance disclosure
 
-AI coding and design assistants are used as development collaborators. Material implementation decisions, tests, Qodo findings, fixes, architecture choices, authentic capture evidence, and final merges remain human-governed.
+AI coding and design assistants are used as development collaborators. Material implementation decisions, tests, Qodo findings, fixes, architecture choices, authentic capture evidence, release authority, and final merges remain human-governed.
 
 ## Status
 
-Active hackathon development. `v0.003-dev` is implemented on PR #7 and remains pre-release until authentic local MCP capture plus final exact-head CI/Qodo review satisfy the release gate.
+`v0.003` is the current release milestone carried by PR #7. Its authentic proof, substantive CI/Qodo review, and human release-authority gates were satisfied before merge; the release metadata commit receives the final exact-head verification before entering `main`.
