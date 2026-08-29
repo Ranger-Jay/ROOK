@@ -3,10 +3,7 @@ import type { HarnessEvent, IncidentSession } from './adapter'
 import { selectLatestObservedRetryPressure } from './liveIncidentEvidence'
 import { createHarnessAdapter, resolveHarnessRuntimeConfiguration } from './runtime'
 import { selectLatestReproducedRetryPressure } from './sandboxReproductionEvidence'
-import {
-  ROOK_V004_SANDBOX_COMMAND,
-  ROOK_V004_SANDBOX_INTENT,
-} from './v004'
+import { buildV004SandboxInstructions } from './v004'
 import './trueforge-proof.css'
 import './v004-proof.css'
 
@@ -18,16 +15,7 @@ const incident = {
   objective: 'Observe retry pressure from the owned non-production demo source, then reproduce the arithmetic in an isolated TrueForge sandbox without incident mutation.',
 } as const
 
-export const V004_PROOF_INSTRUCTION = [
-  'Investigate the owned Inventory Retry Storm demo and complete the bounded v0.004 reproduction chain.',
-  'Call get_retry_pressure exactly once and wait for its read-only MCP response.',
-  'Treat that MCP response as OBSERVED owned-demo evidence only.',
-  'Then call the TrueForge sandbox exec tool exactly once.',
-  `Use exactly this intent: ${ROOK_V004_SANDBOX_INTENT}`,
-  `Use exactly this command: ${ROOK_V004_SANDBOX_COMMAND}`,
-  'Do not supply cwd, env, files, network requests, package installation, another command, another tool, mutation, approval, subagent, or user-question capability.',
-  'Treat the sandbox result as REPRODUCED evidence only; it is not applied remediation or verified recovery.',
-].join(' ')
+export const V004_PROOF_INSTRUCTION = buildV004SandboxInstructions(incident)
 
 const statusCopy: Record<ProofStatus, { label: string; detail: string }> = {
   unconfigured: {
