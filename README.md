@@ -8,6 +8,26 @@ Its operational contract is simple:
 
 > **Investigate autonomously. Mutate only with human authority. Verify recovery with evidence.**
 
+## For judges
+
+ROOK is an approval-gated AI incident commander built on TrueForge for the 2026 Agent Harness Hackathon. It is designed so that no incident claim reaches the interface unless retained harness evidence supports it; everything else stays visibly labeled `FIXTURE`.
+
+Verify the build with no TrueForge installation and no network calls to a model:
+
+```bash
+npm install
+npm test
+```
+
+`npm test` runs the unit suite. For the remaining CI checks, run `npm run tokens:check` and `npm run build`.
+
+- **Representative merged pull request** (hackathon submission requirement): [PR #5 - v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into main.
+- **Active review trail, open and not merged:** [PR #7 - v0.003 owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
+
+main carries released milestones only. VERSION on main is v0.002. PR #7 is v0.003-dev: authentic local MCP proof has passed, while final exact-head CI/Qodo review and the human release/merge decision are still pending.
+
+Current v0.003 proof is intentionally narrower: owned demo source -> read-only MCP -> TrueForge model tool call -> correlated tool.response -> evidence-backed UI. Sandbox, subagents, approval, mutation, remediation, and recovery remain future milestones and are not claimed by v0.003.
+
 The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack creates retry pressure on shared infrastructure. ROOK is being built milestone-by-milestone so every public capability claim has a real evidence chain behind it.
 
 ## ROOK Truth Doctrine
