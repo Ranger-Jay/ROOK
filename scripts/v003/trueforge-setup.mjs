@@ -1,12 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { TrueForge } from '@truefoundry/trueforge-sdk'
-import {
-  ROOK_V003_MCP_TOOL_SPECS,
-  ROOK_V003_READ_ONLY_ANNOTATIONS,
-} from './mcp-server.mjs'
 
-const DEFAULT_TRUEFORGE_URL = 'http://127.0.0.1:8790'
+const DEFAULT_TRUEFORGE_URL = 'http://localhost:8790'
 const ROOK_MCP_URL = 'http://127.0.0.1:8791/mcp'
 
 export const ROOK_V003_TRUEFORGE_MCP_MANIFEST = Object.freeze({
@@ -73,35 +69,6 @@ const assertConfiguredConnector = (configured) => {
   }
 }
 
-const assertTrueForgeToolInventory = (tools) => {
-  if (!Array.isArray(tools)) throw new Error('TrueForge returned a non-array MCP tool inventory.')
-
-  const expectedNames = ROOK_V003_MCP_TOOL_SPECS.map(({ name }) => name)
-  const actualNames = tools.map((tool) => tool?.name)
-  const actualNameSet = new Set(actualNames)
-  if (
-    actualNames.length !== expectedNames.length
-    || actualNameSet.size !== actualNames.length
-    || expectedNames.some((name) => !actualNameSet.has(name))
-  ) {
-    throw new Error(
-      `TrueForge ROOK MCP tool inventory drifted; expected exactly {${expectedNames.join(', ')}}, received {${actualNames.join(', ')}}.`,
-    )
-  }
-
-  for (const tool of tools) {
-    const annotations = tool?.annotations
-    if (
-      annotations?.readOnlyHint !== ROOK_V003_READ_ONLY_ANNOTATIONS.readOnlyHint
-      || annotations?.destructiveHint !== ROOK_V003_READ_ONLY_ANNOTATIONS.destructiveHint
-      || annotations?.idempotentHint !== ROOK_V003_READ_ONLY_ANNOTATIONS.idempotentHint
-      || annotations?.openWorldHint !== ROOK_V003_READ_ONLY_ANNOTATIONS.openWorldHint
-    ) {
-      throw new Error(`TrueForge tool ${String(tool?.name)} does not retain the required positive read-only annotation contract.`)
-    }
-  }
-}
-
 export async function ensureV003TrueForgeConnector({
   baseUrl = process.env.ROOK_TRUEFORGE_URL ?? DEFAULT_TRUEFORGE_URL,
   client,
@@ -133,15 +100,11 @@ export async function ensureV003TrueForgeConnector({
 
   assertConfiguredConnector(configured)
 
-  const toolResult = await trueForge.settings.mcpServers.listTools(ROOK_V003_TRUEFORGE_MCP_MANIFEST.name)
-  assertTrueForgeToolInventory(toolResult?.data)
-
   return {
     disposition,
     trueForgeUrl: localBaseUrl,
     connector: ROOK_V003_TRUEFORGE_MCP_MANIFEST.name,
     mcpUrl: ROOK_V003_TRUEFORGE_MCP_MANIFEST.url,
-    tools: ROOK_V003_MCP_TOOL_SPECS.map(({ name }) => name),
   }
 }
 
@@ -153,10 +116,10 @@ if (isDirectExecution) {
     console.error(`[rook:v0.003] TrueForge connector ${result.disposition}: ${result.connector}`)
     console.error(`[rook:v0.003] TrueForge: ${result.trueForgeUrl}`)
     console.error(`[rook:v0.003] MCP URL: ${result.mcpUrl}`)
-    console.error(`[rook:v0.003] verified read-only tools: ${result.tools.join(', ')}`)
-    console.error('[rook:v0.003] TrueForge connector/tool preflight passed')
+    console.error('[rook:v0.003] connector manifest/no-auth preflight passed')
+    console.error('[rook:v0.003] tool inventory is verified by demo:stack and the authentic TrueForge turn; TrueForge 0.1.3 does not expose a connector-tools settings route')
   } catch (error) {
-    console.error('[rook:v0.003] TrueForge connector/tool preflight failed:', error instanceof Error ? error.message : error)
+    console.error('[rook:v0.003] TrueForge connector preflight failed:', error instanceof Error ? error.message : error)
     process.exitCode = 1
   }
 }

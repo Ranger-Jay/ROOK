@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   ROOK_V003_MCP_SERVER_NAME,
   V003SdkTrueForgeTransport,
@@ -91,4 +91,3 @@ describe('V003SdkTrueForgeTransport streaming', () => {
     })
   })
 })
-

@@ -24,18 +24,34 @@ evidence-backed retry-pressure surface
 
 This procedure proves only the v0.003 read-only investigation boundary. It does **not** prove production telemetry, sandbox execution, subagent delegation, approval, mutation, remediation, or recovery.
 
+## Verified local proof
+
+The authentic v0.003 chain passed on Old Faithful on 2026-08-29 with:
+
+- TrueForge `0.1.3`;
+- local Ollama provider `ollama-local`;
+- model `ollama-local/qwen2-5-1-5b` backed by Ollama tag `qwen2.5:1.5b`;
+- connector `rook-inventory-retry-storm`;
+- required MCP call `get_retry_pressure`;
+- session `01m17a7g48yk63nzcyenrf8pqt`;
+- turn `01m17a7gq43apay5tppvhgtr4q.local`.
+
+The resulting evidence-backed UI displayed `LIVE READ-ONLY MCP EVIDENCE` and the observed retry-pressure card with retry multiplier `5.3x`, attempts/minute `4,800`, queue depth `7,200`, queue saturation `91%`, source `inventory-retry-queue`, and classification `owned-demo-non-production`.
+
+The persisted TrueForge proof was frozen outside the repository. Do not commit machine-specific proof files or screenshots containing secrets.
+
 ## Required local components
 
 Run all components on the same local machine:
 
 - ROOK branch `feat/v0.003-mcp-readonly-investigation`;
 - Node.js compatible with the repository engine requirement;
-- local TrueForge 0.1.3 on `http://127.0.0.1:8790`;
-- a model already configured in TrueForge that can issue function/tool calls;
+- local TrueForge 0.1.3 reachable at `http://localhost:8790`;
+- a model configured in TrueForge that supports function/tool calling;
 - the ROOK owned demo source on `127.0.0.1:8792`;
 - the ROOK read-only MCP server on `127.0.0.1:8791/mcp`.
 
-No cloud API key is required when TrueForge is using the already-configured local model provider. Never place secrets in `VITE_*` variables, screenshots, GitHub comments, or chat messages.
+No cloud API key is required when TrueForge is using a local model provider. Never place secrets in `VITE_*` variables, screenshots, GitHub comments, or chat messages.
 
 ## 1. Update and install ROOK
 
@@ -48,7 +64,7 @@ git pull --ff-only
 npm install
 ```
 
-Before capture, confirm the current branch head matches the PR #7 head selected by Command Center.
+Before capture, confirm the current branch head matches the PR #7 head selected for the proof.
 
 ## 2. Start the owned proof stack
 
@@ -67,115 +83,139 @@ read-only MCP:     http://127.0.0.1:8791/mcp
 
 Before reporting readiness, the command verifies:
 
-- the source health boundary is `rook-owned-demo-source`;
-- the source classification is `owned-demo-non-production`;
-- the MCP health boundary is `rook-owned-read-only-mcp`;
-- the MCP tool inventory is exactly the four approved v0.003 read-only tools;
-- the retry-pressure source probe carries the exact owned-demo scenario/classification/kind.
+- source boundary `rook-owned-demo-source`;
+- source classification `owned-demo-non-production`;
+- MCP boundary `rook-owned-read-only-mcp`;
+- exact four-tool owned MCP inventory;
+- retry-pressure source provenance and classification.
 
-Expected terminal output includes:
+Expected output includes:
 
 ```text
 [rook:v0.003] proof stack ready
 [rook:v0.003] health/truth checks: passed
 ```
 
-Keep this terminal running during the authentic capture. Press **Ctrl+C** after the proof to stop both servers cleanly.
-
-The underlying individual commands remain available for diagnosis if needed:
-
-```bash
-npm run demo:source
-npm run demo:mcp
-```
-
-`demo:stack` is the preferred capture path because it reduces setup drift and performs the health/truth checks automatically.
+Keep this terminal running during the authentic capture.
 
 ## 3. Configure and verify the TrueForge connector
 
-With local TrueForge 0.1.3 already running on `http://127.0.0.1:8790`, open a second terminal in the ROOK repository and run:
+TrueForge 0.1.3 should be addressed through:
+
+```text
+http://localhost:8790
+```
+
+Then run:
 
 ```bash
 npm run demo:trueforge-setup
 ```
 
-This uses the pinned TrueForge 0.1.3 SDK/settings API. It is intentionally fail-closed:
+The helper is intentionally fail-closed:
 
 - if `rook-inventory-retry-storm` is absent, it creates exactly one no-auth remote connector for `http://127.0.0.1:8791/mcp`;
 - if the exact connector already exists, it reuses it without mutation;
-- if the same name exists with a different URL, description, auth mode, or manifest, it refuses to overwrite it;
-- it then asks TrueForge to list the connector's tools;
-- it requires the exact four-tool set, with no duplicate or unexpected tools;
-- every tool must retain `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, and `openWorldHint: false` through the TrueForge boundary.
+- if the same name exists with a different URL, description, auth mode, or manifest shape, it refuses to overwrite it;
+- it verifies the exact connector manifest and `authStatus.status = not_required`.
 
-Expected output ends with:
+Expected output includes:
 
 ```text
-[rook:v0.003] TrueForge connector/tool preflight passed
+[rook:v0.003] connector manifest/no-auth preflight passed
 ```
 
-This setup command changes only local TrueForge connector configuration when the connector is absent. It does **not** create a TrueForge session, run a model turn, call an MCP tool through an agent, use a sandbox, start a subagent, request approval, or mutate the owned incident source.
+### TrueForge 0.1.3 connector-tools API limitation
 
-If the command reports a mismatched existing connector, stop and inspect that local configuration. Do not use an upsert/overwrite workaround merely to make the proof proceed.
+The installed TrueForge 0.1.3 server does **not** expose `GET /api/v1/mcp-servers/{name}/tools`. The SDK/server combination may surface a `listTools` client method in another namespace, but the installed server returns route-not-found for that endpoint.
+
+Therefore `demo:trueforge-setup` does **not** treat that unavailable route as a proof requirement. Tool truth is established instead by:
+
+1. the owned `demo:stack` boundary, which verifies the exact four-tool MCP inventory;
+2. source/tests that lock the positive read-only annotations;
+3. the authentic TrueForge turn, which proves the model can invoke the approved connector and produce a correlated `tool.response`.
+
+A 404 from the unavailable connector-tools settings route is a TrueForge 0.1.3 SDK/server compatibility limitation, not evidence that the ROOK MCP server is unhealthy.
 
 ## 4. Confirm the local TrueForge model
 
-Under **Settings → Models**, confirm the existing local model provider remains configured and available.
+Under **Settings → Models**, confirm a tool-capable model is configured.
 
-The model used for the authentic v0.003 capture must support tool/function calling. A model that only returns text will correctly fail the v0.003 evidence gate because ROOK requires correlated MCP call/response evidence and exactly one `get_retry_pressure` proof call.
+The verified local model for the authentic proof was:
 
-Do not change to a paid provider merely to satisfy this milestone unless explicitly chosen.
+```text
+ollama-local/qwen2-5-1-5b
+```
+
+A text-only model correctly fails the v0.003 evidence gate because ROOK requires correlated MCP call/response evidence and exactly one `get_retry_pressure` proof call.
 
 ## 5. Configure ROOK's non-secret local environment
 
-Create or update `.env.local`:
+Use:
 
 ```text
-VITE_TRUEFORGE_URL=http://127.0.0.1:8790
-VITE_TRUEFORGE_MODEL=<the exact model identifier configured in TrueForge>
+VITE_TRUEFORGE_URL=http://localhost:8790
+VITE_TRUEFORGE_MODEL=<exact configured TrueForge model identifier>
 ```
 
-`VITE_*` values are browser-visible. The model identifier is not a credential; API keys, bearer tokens, passwords, and other secrets must never be placed here.
+`VITE_*` values are browser-visible. Never place API keys, bearer tokens, passwords, or other secrets in them.
 
 ## 6. Start ROOK
 
-In the same second terminal after the TrueForge setup command exits successfully, run:
+Run:
 
 ```bash
 npm run dev
 ```
 
-Open the Vite URL in a normal browser on the same machine.
-
-The browser talks to TrueForge through ROOK's governed same-origin Vite proxy. The MCP server is reached by TrueForge itself, not by the browser.
+Open the Vite URL in a normal browser on the same machine. The browser talks to TrueForge through ROOK's governed same-origin Vite proxy; TrueForge talks to the MCP server directly.
 
 ## 7. Run the v0.003 proof
 
-In ROOK, find:
+In ROOK, choose **Run read-only investigation** from the `TRUEFORGE · v0.003 READ-ONLY INCIDENT EVIDENCE` surface.
 
-**TRUEFORGE · v0.003 read-only incident evidence**
+The proof contract requires `get_retry_pressure` **exactly once**. Other positively classified tools from the same `@read-only` MCP inventory may be used, but they do not replace the required retry-pressure call.
 
-Choose:
-
-**Run read-only investigation**
-
-The proof contract requires the model to call `get_retry_pressure` **exactly once** before answering. Other positively classified tools from the same `@read-only` MCP inventory may be used, but they do not replace the required retry-pressure call.
-
-ROOK must not display the success state merely because a session or text answer exists. Success requires:
+ROOK must not promote success merely because a session or text answer exists. Success requires:
 
 1. a real TrueForge session response;
 2. exactly one retained settled `get_retry_pressure` MCP tool call;
-3. the exact owned MCP server identity;
-4. any additional tool call to remain inside the approved read-only inventory;
+3. exact owned MCP server identity;
+4. any additional call to remain inside the approved read-only inventory;
 5. raw serialized tool arguments retained without invented parsing;
-6. matching `tool.response` evidence linked by `toolCallId` for every retained MCP call;
-7. matching thread identity between each call and response;
-8. a retry-pressure payload that passes the owned-demo public-truth projection gate;
+6. matching `tool.response` evidence linked by `toolCallId`;
+7. matching call/response thread identity;
+8. retry-pressure payload passing the owned-demo public-truth gate;
 9. exactly one successful `turn.done`;
 10. zero required actions;
 11. no sandbox, subagent, approval, MCP-auth, user-supplied tool response, or mutation activity.
 
-## 8. Expected successful surface
+## 8. TrueForge eager-tool compatibility
+
+The verified local Qwen path required the connector attachment to use:
+
+```text
+enableTools: ["@read-only"]
+preload: true
+```
+
+With `preload: false`, TrueForge deferred tool discovery and the small local model received zero tool definitions (`toolDefinitions: 0`), producing a text-only turn that ROOK correctly rejected.
+
+`preload: true` does **not** widen ROOK's tool authority: the attachment remains bounded by `enableTools: ["@read-only"]`, the named connector, the exact owned tool inventory, and ROOK's fail-closed evidence contract.
+
+## 9. Streaming tool-call compatibility
+
+TrueForge can emit a base `model.message` followed by one or more `model.message.delta` fragments containing tool-call fields. ROOK uses the official SDK `isEventDelta` / `mergeEventDelta` semantics to fold same-ID fragments into a settled `model.message` before normalization.
+
+ROOK does not fabricate a tool call from an isolated fragment. The transport fails closed if a delta arrives without its base message, a base repeats unexpectedly, or the stream ends with an unsettled model message.
+
+Regression coverage is in:
+
+```text
+src/harness/v003Transport.test.ts
+```
+
+## Expected successful surface
 
 A passing capture shows:
 
@@ -183,14 +223,14 @@ A passing capture shows:
 LIVE READ-ONLY MCP EVIDENCE
 ```
 
-and an evidence-backed card labeled:
+and:
 
 ```text
 OBSERVED · OWNED DEMO MCP
 Retry pressure
 ```
 
-The card is allowed to show retry metrics only after its response payload proves:
+The retry-pressure surface may promote only after the response proves:
 
 ```text
 source.system = rook-owned-demo-source
@@ -199,69 +239,90 @@ source.classification = owned-demo-non-production
 source.kind = retry-pressure
 ```
 
-The card also retains the MCP call ID plus the source event IDs for the initiating tool call and matching response.
+All surrounding incident fields that have not crossed their own evidence gates remain explicitly labeled `FIXTURE` or `DESIGN`.
 
-All surrounding incident fields that have not crossed this evidence gate remain explicitly labeled **FIXTURE**.
+## Windows / Old Faithful troubleshooting
+
+### TrueForge responds on localhost but not 127.0.0.1
+
+On the verified Windows machine, TrueForge 0.1.3 listened on IPv6 loopback:
+
+```text
+[::1]:8790
+```
+
+Consequently:
+
+```text
+http://localhost:8790/healthz  -> 200 OK
+http://[::1]:8790/healthz      -> 200 OK
+http://127.0.0.1:8790/healthz  -> connection failure
+```
+
+Use `localhost` for the TrueForge origin. The ROOK-owned source and MCP boundaries continue to use `127.0.0.1` on ports 8792 and 8791.
+
+### Local model/provider missing
+
+The verified recovery path used Ollama 0.33.2 and pulled:
+
+```text
+qwen2.5:1.5b
+```
+
+The TrueForge custom provider was restored as `ollama-local` with base URL `http://localhost:11434/v1` and model FQN `ollama-local/qwen2-5-1-5b`.
+
+This is a local-development option, not a requirement to use Ollama for all ROOK deployments.
 
 ## Fail-closed conditions
 
-The proof must fail rather than promote a live claim if any of these occurs:
+The proof fails rather than promoting a live claim for any of the following:
 
-- no `get_retry_pressure` MCP tool call;
-- more than one `get_retry_pressure` MCP tool call;
-- tool call from an unexpected MCP server;
-- tool outside the exact owned read-only inventory;
-- missing or malformed `toolInfo` provenance;
+- no `get_retry_pressure` call;
+- more than one `get_retry_pressure` call;
+- unexpected MCP server or tool;
+- missing/malformed MCP provenance;
 - duplicate tool-call ID;
-- tool response without a retained call;
-- duplicate tool response;
+- response without retained call;
+- duplicate response;
 - call/response thread mismatch;
-- terminal turn with an unresolved tool call;
-- malformed response content;
-- missing/wrong owned-demo classification;
-- unexpected approval;
-- unexpected MCP authentication pause;
-- user-supplied tool-response pause;
-- sandbox activity;
-- subagent activity;
+- unresolved tool call at terminal state;
+- malformed response content or wrong owned-demo classification;
+- approval, MCP-auth, sandbox, subagent, or user-supplied tool-response activity;
 - required actions at terminal state;
 - terminal status other than `done`;
-- missing terminal `turn.done`;
-- more than one terminal event;
-- a text-only answer with no correlated MCP evidence.
+- missing or duplicate terminal event;
+- text-only answer with no correlated MCP evidence.
 
 ## Authentic capture checklist
 
-Retain screenshots/log evidence showing at minimum:
+Retain evidence showing at minimum:
 
 - [ ] current PR #7 head SHA;
-- [ ] `npm run demo:stack` reports `proof stack ready` and `health/truth checks: passed`;
-- [ ] owned demo source is on `127.0.0.1:8792`;
-- [ ] owned read-only MCP server is on `127.0.0.1:8791/mcp`;
-- [ ] `npm run demo:trueforge-setup` reports connector/tool preflight passed;
-- [ ] connector `rook-inventory-retry-storm` is no-auth and points exactly to `http://127.0.0.1:8791/mcp`;
-- [ ] TrueForge sees exactly the four positively read-only tools;
+- [ ] `demo:stack` reports proof-stack ready and health/truth checks passed;
+- [ ] owned source on `127.0.0.1:8792`;
+- [ ] read-only MCP on `127.0.0.1:8791/mcp`;
+- [ ] connector manifest/no-auth preflight passed;
+- [ ] TrueForge reachable through `http://localhost:8790`;
+- [ ] connector points exactly to `http://127.0.0.1:8791/mcp`;
+- [ ] exact four-tool owned MCP inventory verified by `demo:stack`;
 - [ ] real TrueForge session ID;
 - [ ] exactly one `mcp.tool.called` for `get_retry_pressure`;
-- [ ] MCP server identity/provenance;
 - [ ] matching `mcp.tool.returned` / source `tool.response` call ID;
-- [ ] call and response source event IDs and timestamps;
+- [ ] call/response source event provenance;
 - [ ] evidence-backed retry-pressure card;
-- [ ] explicit `owned-demo-non-production` classification;
+- [ ] `owned-demo-non-production` classification;
 - [ ] exactly one terminal `turn.done`;
 - [ ] no sandbox, subagent, approval, auth pause, or mutation activity;
-- [ ] remaining fixture surfaces still visibly labeled.
-
-Do not commit local screenshots containing secrets or machine-specific sensitive information. Sanitized capture evidence may be attached to PR #7.
+- [ ] remaining unproven surfaces still visibly labeled.
 
 ## Release rule
 
-A green test suite, a green `demo:stack` health check, and a green TrueForge connector/tool preflight are **not** the authentic v0.003 proof.
+Green tests, a green proof-stack health check, and a valid connector configuration are not substitutes for authentic incident proof.
 
-The release gate remains closed until the real local chain is observed:
+The release gate requires the real local chain:
 
 ```text
 owned demo source → MCP server → TrueForge tool call → tool.response → ROOK retained evidence → evidence-backed UI
 ```
 
-Only after that capture, exact-final-head CI/Qodo review, and the applicable release decision may `VERSION` move from `v0.003-dev` to `v0.003`.
+That authentic chain has now been demonstrated locally. `VERSION` may move from `v0.003-dev` to `v0.003` only after the exact final repository head also passes CI/Qodo review and the human release decision is explicitly made.
