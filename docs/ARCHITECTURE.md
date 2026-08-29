@@ -1,4 +1,4 @@
-# Architecture — v0.002-dev
+# Architecture — v0.003-dev
 
 ## Product boundary
 
@@ -12,184 +12,348 @@ ROOK harness adapter
         │
         ▼
 TrueForge session / agent loop
-   ├── MCP tools (owned demo systems; v0.003+)
+   ├── owned read-only MCP tools (v0.003)
    ├── Sandbox execution (v0.004+)
    ├── Subagents (v0.004+)
    ├── Human approval checkpoints (v0.005+)
    └── Persistent session context
 ```
 
-The UI must make harness work visible: session/turn evidence, tool activity, delegated work, sandbox boundaries, approval waits, execution, verification, and audit evidence as those capabilities become authentic.
+The UI must make harness work visible as each capability becomes authentic.
 
-ROOK must never let one authentic layer launder another simulated layer into a live claim. In v0.002, the TrueForge session/turn boundary can be live while the Inventory Retry Storm incident data remains fixture-only.
+ROOK must never let one authentic layer launder another simulated layer into a live claim. v0.003 therefore allows a specific read-only MCP observation to become live evidence while unrelated Inventory Retry Storm metrics, topology, investigators, and progression remain explicitly fixture data.
+
+`CLAIM → EVIDENCE → PUBLIC TRUTH`
+
+`Observed ≠ Inferred · Proposed ≠ Approved · Applied ≠ Verified · Verified ≠ Policy`
 
 ## Canonical demo: Inventory Retry Storm
 
-Fictional services:
+The Inventory Retry Storm is an owned, fictional, non-production scenario.
 
-- `storefront`
-- `checkout`
-- `inventory-reservation`
-- `payment`
-- shared queue/cache infrastructure
+The current v0.003 source contains:
 
-A faulty deployment changes retry/backoff behavior in `inventory-reservation`. Under load, retries become aggressive enough to saturate shared infrastructure. Pressure propagates to checkout latency and failures.
+- `inventory-api`;
+- `checkout-api`;
+- `fulfillment-worker`;
+- `inventory-retry-queue`;
+- `inventory-cache`;
+- deterministic service-health observations;
+- deterministic retry-pressure observations;
+- deployment/config history;
+- dependency topology.
 
-The incident is intentionally owned/simulated. No third-party production systems are modified.
+The scenario models an aggressive retry/backoff change that raises retry pressure on shared infrastructure. Causal synthesis remains **inferred** unless ROOK visibly retains the observations supporting it.
 
-## Agent responsibilities
+No third-party production system is read or modified.
 
-Names are product labels until the corresponding TrueForge delegation capability is authentically wired and evidenced.
+## Released v0.002 boundary
 
-- **Sentinel** — telemetry/log investigation
-- **Tracer** — dependency and blast-radius analysis
-- **Forensic** — recent-change/config investigation
-- **Forge** — sandbox reproduction and validation
-
-The main ROOK agent synthesizes evidence, proposes the remediation, and owns the approval boundary in later milestones.
-
-## TrueForge integration
-
-### v0.002 — implemented runtime boundary
-
-ROOK uses the official `@truefoundry/trueforge-sdk` for a deliberately narrow proof:
-
-- local no-login TrueForge origin only;
-- browser SDK traffic routed through ROOK's dedicated same-origin `/__rook_trueforge` Vite proxy;
-- inline model-only agent;
-- real session creation;
-- real streamed text-only turn;
-- normalized source-event provenance;
-- exactly one terminal `turn.done` required;
-- malformed known events fail closed;
-- unknown future events are ignored without inventing semantics;
-- unexpected tool/sandbox/subagent/approval/MCP capability events fail the v0.002 proof.
-
-The configured TrueForge target is validated as a credential-free `localhost`/`127.0.0.1` HTTP origin. The Vite dev/preview server is the only component that talks directly to that target. Browser SDK requests stay same-origin:
+v0.002 established the real TrueForge session/turn transport:
 
 ```text
 ROOK browser
-    │
-    │  /__rook_trueforge/api/v1/...
+    │ /__rook_trueforge/api/v1/...
     ▼
 Vite dev / preview proxy
-    │
-    │  validates target + strips proxy prefix
+    │ validated credential-free loopback target
     ▼
-http://localhost:8790 or http://127.0.0.1:8790
-    │
+TrueForge :8790
+    │ SDK REST + SSE
     ▼
-TrueForge API / SSE stream
+real session + streamed turn evidence
 ```
 
-This boundary avoids depending on a cross-origin browser contract from TrueForge while keeping the local proof credential-free. No browser token exists in v0.002. Hosted/OIDC connectivity is deferred behind a server-side trust boundary rather than exposing credentials through Vite environment variables.
+The configured TrueForge target is restricted to credential-free HTTP `localhost` / `127.0.0.1`. Browser SDK traffic remains same-origin through the dedicated Vite proxy.
 
-See [`TRUEFORGE_V0.002.md`](./TRUEFORGE_V0.002.md) for the reproducible proof and evidence rules.
+v0.002 authentic proof requires a real session response and exactly one terminal `turn.done`. A proxy response alone is not live harness evidence.
 
-### Sessions
+See [`TRUEFORGE_V0.002.md`](./TRUEFORGE_V0.002.md).
 
-A single incident is intended to map to a durable TrueForge session so state survives browser reconnects and the incident remains explainable as one continuous job.
+## v0.003 owned evidence topology
 
-v0.002 establishes the real session resource and streamed-turn transport. Durable client-side incident→session resumption is not yet promoted to a production durability claim.
-
-### MCP tools — v0.003
-
-The owned demo MCP surface will expose owned data/actions. The initial live contract is intentionally read-only:
-
-- fetch service health and SLO metrics;
-- fetch retry/queue pressure metrics;
-- fetch deployment/config history;
-- fetch dependency topology.
-
-A later sensitive example will apply the bounded retry/backoff remediation to the fictional demo environment, but only after the authorization milestone lands.
-
-### Sandbox — v0.004
-
-Agent-written diagnostics and reproduction scripts run inside TrueForge's isolated sandbox. Sandbox output is evidence; it does not itself authorize production/demo-production mutation.
-
-### Subagents — v0.004
-
-The main session delegates bounded investigation tasks and records returned evidence. Subagents do not receive authority to mutate production/demo-production.
-
-### Human approval — v0.005
-
-The proposed remediation stops at a visible approval gate. The exact action, resources, risk, expected result, and rollback/recovery plan are shown before authorization.
-
-### Verification — v0.006
-
-After execution, ROOK independently re-queries telemetry and required checks. Execution success cannot advance the incident directly to resolved.
-
-## Application architecture
+v0.003 adds two new owned loopback boundaries behind TrueForge:
 
 ```text
-src/
-  app/          application shell and composition
-  components/   visual components
-  domain/       incident state and safety invariants
-  harness/      TrueForge adapter, transport, local proxy guardrail, runtime config, evidence proof
-  fixtures/     clearly labeled demo data only
-  styles/       generated Citadel Watch tokens + global styles
+Inventory Retry Storm demo state
+        │ detached read
+        ▼
+Owned demo source
+127.0.0.1:8792
+        │ GET only
+        ▼
+Owned MCP server
+127.0.0.1:8791/mcp
+        │ Streamable HTTP MCP
+        ▼
+TrueForge
+127.0.0.1:8790
+        │ model tool call + tool.response
+        ▼
+ROOK same-origin SDK transport
+        │
+        ▼
+normalization + correlation
+        │
+        ▼
+public-truth projection
+        │
+        ▼
+evidence-backed UI observation
 ```
 
-The domain package does not depend on React or TrueForge transport details. This keeps lifecycle/safety rules unit-testable.
+The deterministic scenario is intentionally fictional. The observation path is authentic: ROOK's promoted fields must have crossed the running source → MCP → TrueForge → ROOK evidence chain.
 
-The harness package separates five concerns:
+## Owned demo source — `:8792`
+
+The source server is loopback-only and read-only.
+
+It exposes GET observations for:
+
+- service health;
+- retry pressure;
+- deployment history;
+- dependency topology.
+
+Each evidence envelope carries:
 
 ```text
-runtime configuration
-        │
-        ▼
-local proxy / transport boundary
-        │
-        ▼
-SDK transport
-        │
-        ▼
-normalization + fail-closed capability boundary
-        │
-        ▼
-ROOK evidence contract / React proof surface
+source.system = rook-owned-demo-source
+source.scenarioId = inventory-retry-storm-v1
+source.classification = owned-demo-non-production
+source.kind = <observation kind>
+source.sourceTimestamp = <source time>
+source.observationWindow = <start/end>
 ```
 
-Generated TrueForge SDK wire types do not become the command surface's public domain contract.
+Reads return detached copies so callers cannot mutate future observations.
 
-## Evidence ownership
+## Owned MCP server — `:8791/mcp`
 
-### TrueForge live evidence
+The MCP server exposes exactly four tools:
 
-v0.002 can authentically own:
+1. `get_service_health`
+2. `get_retry_pressure`
+3. `get_deployment_history`
+4. `get_dependency_topology`
 
-- session resource ID returned by TrueForge;
-- ROOK observation timestamp for that response;
-- TrueForge stream event IDs;
-- source timestamps when supplied;
-- stream sequence identifiers when supplied;
-- thread identity, preserving `null` root-thread semantics;
-- terminal turn status.
+All four positively declare:
 
-The proxy itself is transport infrastructure, not evidence that TrueForge is live. `LIVE HARNESS OBSERVED` still requires a real session response plus exactly one terminal streamed turn.
+```text
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: true
+openWorldHint: false
+```
 
-### Fixture incident evidence
+The server performs no mutation. It reads the owned demo source and returns the resulting envelope as MCP text/structured content.
 
-Until v0.003, the following remain fixtures and must stay labeled:
+## TrueForge v0.003 authority boundary
 
-- retry/error/latency metrics;
-- deployment/config history;
-- dependency topology;
+ROOK creates a fresh inline TrueForge agent for the proof session.
+
+The agent attaches only the configured connector named:
+
+```text
+rook-inventory-retry-storm
+```
+
+with:
+
+```text
+enableTools: ["@read-only"]
+preload: false
+```
+
+The agent definition does not carry the MCP URL or credentials. TrueForge resolves the configured connector by name.
+
+v0.003 explicitly disables capabilities that TrueForge may otherwise default-enable:
+
+```text
+sandbox.enabled = false
+dynamicSubAgents.enabled = false
+askUserQuestions.enabled = false
+generativeUi.enabled = false
+skills = []
+```
+
+The agent loop is also bounded by an explicit iteration limit.
+
+No approval resumption or mutation authority is introduced in this milestone.
+
+## MCP evidence normalization
+
+v0.003 does not reconstruct authoritative tool calls from fragmented streaming deltas.
+
+The settled TrueForge `model.message` event is the retained tool-call observation. ROOK requires:
+
+- source event ID;
+- source timestamp;
+- stream sequence when supplied;
+- thread identity;
+- tool call ID;
+- function name;
+- raw serialized argument string;
+- `toolInfo.type = mcp`;
+- MCP server ID;
+- exact MCP server name;
+- exact allowed tool name.
+
+ROOK retains this as:
+
+```text
+mcp.tool.called
+```
+
+TrueForge `tool.response` is retained as:
+
+```text
+mcp.tool.returned
+```
+
+with:
+
+- source event ID/timestamp;
+- stream sequence when supplied;
+- thread identity;
+- `toolCallId`;
+- raw serialized content.
+
+Raw argument/response strings are retained without inventing parsed semantics at the normalization boundary.
+
+## Correlation contract
+
+A v0.003 turn cannot become ready from a text answer alone.
+
+ROOK requires a one-to-one evidence relationship:
+
+```text
+settled model.message tool call
+        │ call ID
+        ▼
+tool.response
+```
+
+The adapter fails closed on:
+
+- duplicate call IDs;
+- response without retained call;
+- duplicate response;
+- call/response thread mismatch;
+- terminal turn while a call remains unresolved;
+- no correlated MCP evidence;
+- event after terminal evidence;
+- approval activity;
+- MCP auth pause;
+- user-supplied tool-response pause;
+- sandbox activity;
+- subagent activity;
+- required terminal actions;
+- terminal status other than `done`;
+- missing or multiple terminal events.
+
+Exactly one terminal `turn.done` remains required.
+
+## Public-truth projection
+
+Observed tool output is not automatically a UI fact.
+
+The first v0.003 promoted surface is retry pressure. Before ROOK displays the live observation, the correlated `get_retry_pressure` response must parse as the exact owned demo envelope and prove:
+
+```text
+source.system = rook-owned-demo-source
+source.scenarioId = inventory-retry-storm-v1
+source.classification = owned-demo-non-production
+source.kind = retry-pressure
+```
+
+Required numeric/string fields must also be present and valid.
+
+Only then can the UI display:
+
+```text
+OBSERVED · OWNED DEMO MCP
+```
+
+with retry multiplier, attempts/minute, queue depth, queue saturation, source timestamp, call ID, and call/response source event IDs.
+
+A malformed, unclassified, wrong-scenario, wrong-server, or incomplete response is not promoted.
+
+All other incident surfaces remain fixture-labeled until they receive their own projection gate.
+
+## Evidence-state ownership
+
+### Authentic v0.003 evidence can include
+
+- TrueForge session ID;
+- session-response observation time;
+- streamed TrueForge source event IDs;
+- source timestamps;
+- SSE sequence IDs;
+- thread identity;
+- exact owned MCP server identity;
+- settled MCP tool call ID/name/raw arguments;
+- matching tool response ID/content;
+- call/response correlation;
+- exactly one successful terminal turn;
+- classified owned-demo retry-pressure observation projected to UI.
+
+### Still fixture/design-only in v0.003
+
+Unless separately promoted through a matching evidence gate:
+
+- fault-source confidence;
+- legacy dashboard retry/error/latency metrics;
+- blast-radius topology presentation;
 - delegated investigator states;
-- causal confidence;
-- incident progression shown for the scripted scenario.
+- sandbox state;
+- incident progression;
+- remediation proposal;
+- approval;
+- mutation;
+- recovery verification.
 
-A live TrueForge connection does not promote fixture incident fields to observed truth.
+A successful MCP proof does not promote any of those fields automatically.
 
-## Data ownership
+## Application structure
 
-All demo telemetry, deployment history, source/config fixtures, and mutation targets are owned by this project or generated for the demo. Secrets remain outside the repo.
+```text
+scripts/v003/
+  incident-source.mjs       owned non-production demo observations
+  source-server.mjs         loopback GET boundary
+  mcp-server.mjs            four read-only MCP tools
+  read-only-boundary.test.mjs
 
-## Scope discipline
+src/harness/
+  adapter.ts                ROOK evidence event contract
+  localProxy.ts             same-origin TrueForge loopback guard
+  trueforge.ts              released v0.002 normalization/transport
+  v003.ts                   v0.003 agent authority + MCP normalization/correlation
+  liveIncidentEvidence.ts   public-truth projection
+  runtime.ts                local runtime composition
+  TrueForgeProof.tsx        visible authentic evidence surface
+```
 
-ROOK v0.002 establishes authentic TrueForge session/turn connectivity and its evidence boundary only. It intentionally does not add MCP incident evidence, sandbox work, subagent execution, approval resumption, or remediation authority.
+The released v0.002 transport remains separate from the v0.003 adapter so the new authority surface does not silently rewrite the prior milestone's contract.
 
-This preserves the project sequence:
+## Future boundaries
+
+### v0.004 — sandbox + delegated investigators
+
+Sandbox execution and subagents remain disabled until their own evidence/authority contracts are implemented.
+
+### v0.005 — human authorization + bounded remediation
+
+Mutation may occur only after an exact proposed action reaches a visible human approval boundary.
+
+### v0.006 — independent recovery verification
+
+Execution success cannot become recovery. ROOK must independently re-observe required health evidence before Verified Green.
+
+## Reproduction
+
+See [`TRUEFORGE_V0.003.md`](./TRUEFORGE_V0.003.md) for the exact local connector registration, process topology, authentic capture requirements, and fail-closed checklist.
+
+The project sequence remains:
 
 `connection proof → read-only evidence → isolated reproduction/delegation → human-authorized mutation → independent verification`
