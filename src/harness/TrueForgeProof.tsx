@@ -10,7 +10,7 @@ import {
 import './trueforge-proof.css'
 import './v004-proof.css'
 
-type ProofStatus = 'unconfigured' | 'idle' | 'connecting' | 'reproduced' | 'failed'
+export type ProofStatus = 'unconfigured' | 'idle' | 'connecting' | 'reproduced' | 'failed'
 
 const incident = {
   incidentId: 'INC-2048',
@@ -88,6 +88,8 @@ const eventDetail = (event: HarnessEvent): string => {
 export const evidenceEventLabel = (event: HarnessEvent): string =>
   event.type === 'turn.completed' ? 'turn.done' : event.type
 
+export const shouldPromoteReproducedEvidence = (status: ProofStatus): boolean => status === 'reproduced'
+
 const formatInteger = (value: number): string => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)
 
 export default function TrueForgeProof() {
@@ -149,7 +151,9 @@ export default function TrueForgeProof() {
   const copy = statusCopy[status]
   const recentEvents = events.slice(-12)
   const retryPressure = selectLatestObservedRetryPressure(events)
-  const reproduction = selectLatestReproducedRetryPressure(events)
+  const reproduction = shouldPromoteReproducedEvidence(status)
+    ? selectLatestReproducedRetryPressure(events)
+    : null
 
   return (
     <section className={`harness-proof proof-${status}`} aria-labelledby="trueforge-proof-title">
