@@ -24,6 +24,8 @@ export type HarnessEvent = HarnessEventEvidence & (
   | { type: 'mcp.tool.returned'; sessionId: string; callId: string; content: string }
   | { type: 'tool.returned'; sessionId: string; callId: string }
   | { type: 'sandbox.started'; sessionId: string; sandboxId: string }
+  | { type: 'sandbox.exec.called'; sessionId: string; callId: string; arguments: string; toolName: 'exec' }
+  | { type: 'sandbox.exec.returned'; sessionId: string; callId: string; content: string }
   | { type: 'subagent.started'; sessionId: string; role: string; taskId: string }
   | { type: 'subagent.completed'; sessionId: string; role: string; taskId: string; outcome: 'done' | 'error' }
   | { type: 'approval.requested'; sessionId: string; approvalId: string; sourceMessageId: string }
