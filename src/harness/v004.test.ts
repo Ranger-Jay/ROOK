@@ -7,6 +7,7 @@ import {
   ROOK_V004_SANDBOX_INTENT,
   V004TrueForgeHarnessAdapter,
   assertV004SandboxExecArguments,
+  assertV004SandboxExecResponseContent,
   buildV004SandboxInstructions,
   normalizeV004TrueForgeEvent,
 } from './v004'
@@ -72,12 +73,25 @@ const sandboxCreated = () => ({
   createdAt: '2026-08-29T18:59:58.000Z',
 })
 
-const sandboxResponse = () => ({
+const reproductionResult = () => JSON.stringify({
+  kind: 'rook-v004-reproduction',
+  retryMultiplier: 5.3,
+  attemptsPerMinute: 4800,
+  baselineAttemptsPerMinute: 900,
+  queueDepth: 7200,
+  queueSaturationPct: 91,
+}) + '\n'
+
+const sandboxResponse = (overrides: Record<string, unknown> = {}) => ({
   id: 'evt_sandbox_response',
   type: 'tool.response',
   threadId: 'main',
   toolCallId: 'call_sandbox',
-  content: '{"success":true,"response":{"exitCode":0,"result":"{\\"kind\\":\\"rook-v004-reproduction\\",\\"retryMultiplier\\":5.3}\\n"}}',
+  content: JSON.stringify({
+    success: true,
+    response: { exitCode: 0, result: reproductionResult() },
+    ...overrides,
+  }),
   createdAt: '2026-08-29T18:59:59.000Z',
 })
 
@@ -116,7 +130,7 @@ const run = async (events: unknown[]) => {
   return { adapter, transport, observed }
 }
 
-describe('ROOK v0.004 sandbox authority contract', () => {
+describe('ROOK v0.004 sandbox evidence contract', () => {
   it('enables sandbox only while disabling file downloads and unrelated default capabilities', () => {
     expect(ROOK_V004_RUNTIME_GUARDRAILS).toEqual({
       iterationLimit: 16,
@@ -128,7 +142,7 @@ describe('ROOK v0.004 sandbox authority contract', () => {
     })
   })
 
-  it('pins one exact deterministic exec payload and rejects cwd/env/extra authority', () => {
+  it('pins one exact deterministic exec payload for evidence acceptance and rejects cwd/env/extra keys', () => {
     expect(() => assertV004SandboxExecArguments(sandboxArgs())).not.toThrow()
     expect(() => assertV004SandboxExecArguments(JSON.stringify({
       intent: ROOK_V004_SANDBOX_INTENT,
@@ -138,7 +152,17 @@ describe('ROOK v0.004 sandbox authority contract', () => {
     expect(() => assertV004SandboxExecArguments(JSON.stringify({
       intent: ROOK_V004_SANDBOX_INTENT,
       command: 'curl https://example.com',
-    }))).toThrow(/single approved deterministic reproduction command/i)
+    }))).toThrow(/deterministic reproduction evidence contract/i)
+  })
+
+  it('accepts only the exact successful zero-exit reproduction result', () => {
+    const valid = sandboxResponse().content
+    expect(() => assertV004SandboxExecResponseContent(valid)).not.toThrow()
+    expect(() => assertV004SandboxExecResponseContent(JSON.stringify({ success: false, response: {} }))).toThrow(/provider failure/i)
+    expect(() => assertV004SandboxExecResponseContent(JSON.stringify({
+      success: true,
+      response: { exitCode: 1, result: reproductionResult() },
+    }))).toThrow(/exit code 0/i)
   })
 
   it('labels observation versus reproduction truth states in the session instructions', () => {
@@ -173,7 +197,7 @@ describe('normalizeV004TrueForgeEvent', () => {
 })
 
 describe('V004TrueForgeHarnessAdapter evidence correlation', () => {
-  it('passes only after observed MCP evidence then sandbox creation, one bounded exec response, and one successful terminal', async () => {
+  it('passes only after observed MCP evidence then sandbox creation, one successful bounded exec response, and one successful terminal', async () => {
     const { adapter, transport, observed } = await run([
       mcpCall(),
       mcpResponse(),
@@ -206,5 +230,20 @@ describe('V004TrueForgeHarnessAdapter evidence correlation', () => {
     const { adapter } = createAdapter([mcpCall(), mcpResponse(), sandboxCall(), sandboxResponse(), turnDone()])
     const session = await adapter.createIncidentSession(request)
     await expect(adapter.runTurn({ sessionId: session.sessionId, instruction: 'Run.' })).rejects.toThrow(/without sandbox.created evidence/i)
+  })
+
+  it('fails closed when TrueForge reports sandbox provider failure or non-zero execution', async () => {
+    for (const response of [
+      sandboxResponse({ success: false }),
+      {
+        ...sandboxResponse(),
+        content: JSON.stringify({ success: true, response: { exitCode: 9, result: reproductionResult() } }),
+      },
+    ]) {
+      const { adapter } = createAdapter([mcpCall(), mcpResponse(), sandboxCall(), sandboxCreated(), response, turnDone()])
+      const session = await adapter.createIncidentSession(request)
+      await expect(adapter.runTurn({ sessionId: session.sessionId, instruction: 'Run.' })).rejects.toThrow(/sandbox exec/i)
+      expect(adapter.connectionState).toBe('failed')
+    }
   })
 })
