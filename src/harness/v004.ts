@@ -138,13 +138,61 @@ export function assertV004SandboxExecArguments(argumentsText: string): void {
   }
 
   if (!isRecord(parsed) || !exactKeys(parsed, ['intent', 'command'])) {
-    throw new HarnessProtocolError('v0.004 sandbox exec must contain exactly intent and command; cwd/env/extra authority is forbidden.')
+    throw new HarnessProtocolError('v0.004 sandbox exec must contain exactly intent and command; cwd/env/extra evidence authority is forbidden.')
   }
   if (parsed.intent !== ROOK_V004_SANDBOX_INTENT) {
     throw new HarnessProtocolError('v0.004 sandbox exec intent drifted from the bounded reproduction contract.')
   }
   if (parsed.command !== ROOK_V004_SANDBOX_COMMAND) {
-    throw new HarnessProtocolError('v0.004 sandbox exec command drifted from the single approved deterministic reproduction command.')
+    throw new HarnessProtocolError('v0.004 sandbox exec command drifted from the deterministic reproduction evidence contract.')
+  }
+}
+
+export function assertV004SandboxExecResponseContent(content: string): void {
+  let providerResult: unknown
+  try {
+    providerResult = JSON.parse(content)
+  } catch {
+    throw new HarnessProtocolError('v0.004 sandbox exec response was not valid JSON.')
+  }
+  if (!isRecord(providerResult) || !exactKeys(providerResult, ['success', 'response'])) {
+    throw new HarnessProtocolError('v0.004 sandbox exec response did not match the expected provider success envelope.')
+  }
+  if (providerResult.success !== true || !isRecord(providerResult.response)) {
+    throw new HarnessProtocolError('v0.004 sandbox exec reported provider failure.')
+  }
+  if (!exactKeys(providerResult.response, ['exitCode', 'result'])) {
+    throw new HarnessProtocolError('v0.004 sandbox exec response payload drifted from the expected exit/result contract.')
+  }
+  if (providerResult.response.exitCode !== 0 || typeof providerResult.response.result !== 'string') {
+    throw new HarnessProtocolError('v0.004 sandbox exec did not complete with exit code 0 and serialized result output.')
+  }
+
+  let reproduction: unknown
+  try {
+    reproduction = JSON.parse(providerResult.response.result.trim())
+  } catch {
+    throw new HarnessProtocolError('v0.004 sandbox exec result did not contain valid reproduction JSON.')
+  }
+  if (!isRecord(reproduction) || !exactKeys(reproduction, [
+    'kind',
+    'retryMultiplier',
+    'attemptsPerMinute',
+    'baselineAttemptsPerMinute',
+    'queueDepth',
+    'queueSaturationPct',
+  ])) {
+    throw new HarnessProtocolError('v0.004 sandbox exec result drifted from the exact reproduction schema.')
+  }
+  if (
+    reproduction.kind !== 'rook-v004-reproduction'
+    || reproduction.retryMultiplier !== 5.3
+    || reproduction.attemptsPerMinute !== 4800
+    || reproduction.baselineAttemptsPerMinute !== 900
+    || reproduction.queueDepth !== 7200
+    || reproduction.queueSaturationPct !== 91
+  ) {
+    throw new HarnessProtocolError('v0.004 sandbox exec result did not reproduce the expected owned-demo retry-pressure values.')
   }
 }
 
@@ -195,7 +243,7 @@ const normalizeV004ModelMessage = (
     const toolInfoName = requireString(toolInfo, `tool call ${callId} system tool name`, 'name')
     if (functionName !== ROOK_V004_SANDBOX_TOOL_NAME || toolInfoName !== ROOK_V004_SANDBOX_TOOL_NAME) {
       throw new HarnessProtocolError(
-        `v0.004 permits only the TrueForge sandbox exec system tool; observed function=${functionName} toolInfo=${toolInfoName}.`,
+        `v0.004 permits only the TrueForge sandbox exec system tool in its evidence contract; observed function=${functionName} toolInfo=${toolInfoName}.`,
       )
     }
     assertV004SandboxExecArguments(args)
@@ -229,13 +277,15 @@ const normalizeV004ToolResponse = (
     return normalizeV003TrueForgeEvent(raw, sessionId, sequence, observedAt)
   }
 
+  const content = requireRawString(raw, 'tool.response content', 'content')
+  assertV004SandboxExecResponseContent(content)
   return [{
     ...v004EvidenceFor(raw, sequence, observedAt, true),
     threadId: requireString(raw, 'tool.response thread id', 'threadId', 'thread_id'),
     type: 'sandbox.exec.returned',
     sessionId,
     callId,
-    content: requireRawString(raw, 'tool.response content', 'content'),
+    content,
   }]
 }
 
@@ -460,7 +510,7 @@ export class V004TrueForgeHarnessAdapter implements RookHarnessAdapter {
             }
             if (callKinds.has(event.callId) || completedCallIds.has(event.callId)) throw new HarnessProtocolError(`TrueForge stream repeated tool call id ${event.callId}.`)
             sandboxExecCallCount += 1
-            if (sandboxExecCallCount !== 1) throw new HarnessProtocolError('v0.004 permits exactly one sandbox exec call.')
+            if (sandboxExecCallCount !== 1) throw new HarnessProtocolError('v0.004 permits exactly one sandbox exec call in the evidence contract.')
             callKinds.set(event.callId, 'sandbox')
             pendingSandboxCalls.set(event.callId, event)
           } else if (event.type === 'sandbox.started') {
