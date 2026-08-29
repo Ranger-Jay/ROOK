@@ -1,5 +1,6 @@
 import type { HarnessEvent } from './adapter'
 import {
+  ROOK_V004_REPRODUCTION_INPUT,
   ROOK_V004_SANDBOX_COMMAND,
   ROOK_V004_SANDBOX_INTENT,
 } from './v004'
@@ -138,21 +139,21 @@ export function projectReproducedRetryPressure(
 
   if (
     reproduction.kind !== 'rook-v004-reproduction'
-    || reproduction.retryMultiplier !== 5.3
-    || reproduction.attemptsPerMinute !== 4800
-    || reproduction.baselineAttemptsPerMinute !== 900
-    || reproduction.queueDepth !== 7200
-    || reproduction.queueSaturationPct !== 91
+    || reproduction.retryMultiplier !== ROOK_V004_REPRODUCTION_INPUT.retryMultiplier
+    || reproduction.attemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute
+    || reproduction.baselineAttemptsPerMinute !== ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute
+    || reproduction.queueDepth !== ROOK_V004_REPRODUCTION_INPUT.queueDepth
+    || reproduction.queueSaturationPct !== ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct
   ) return null
 
   return {
     evidenceState: 'reproduced',
     kind: 'rook-v004-reproduction',
-    retryMultiplier: 5.3,
-    attemptsPerMinute: 4800,
-    baselineAttemptsPerMinute: 900,
-    queueDepth: 7200,
-    queueSaturationPct: 91,
+    retryMultiplier: ROOK_V004_REPRODUCTION_INPUT.retryMultiplier,
+    attemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute,
+    baselineAttemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute,
+    queueDepth: ROOK_V004_REPRODUCTION_INPUT.queueDepth,
+    queueSaturationPct: ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct,
     sandboxId: evidence.sandboxId,
     callId: evidence.callId,
     callSourceEventId: evidence.callSourceEventId,
