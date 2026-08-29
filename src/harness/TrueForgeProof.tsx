@@ -2,43 +2,52 @@ import { useMemo, useState } from 'react'
 import type { HarnessEvent, IncidentSession } from './adapter'
 import { selectLatestObservedRetryPressure } from './liveIncidentEvidence'
 import { createHarnessAdapter, resolveHarnessRuntimeConfiguration } from './runtime'
+import { selectLatestReproducedRetryPressure } from './sandboxReproductionEvidence'
+import {
+  ROOK_V004_SANDBOX_COMMAND,
+  ROOK_V004_SANDBOX_INTENT,
+} from './v004'
 import './trueforge-proof.css'
 
-type ProofStatus = 'unconfigured' | 'idle' | 'connecting' | 'observed' | 'failed'
+type ProofStatus = 'unconfigured' | 'idle' | 'connecting' | 'reproduced' | 'failed'
 
 const incident = {
   incidentId: 'INC-2048',
   title: 'Inventory Retry Storm',
-  objective: 'Observe retry pressure from the owned non-production demo source through the governed read-only MCP boundary.',
+  objective: 'Observe retry pressure from the owned non-production demo source, then reproduce the arithmetic in an isolated TrueForge sandbox without incident mutation.',
 } as const
 
-export const V003_PROOF_INSTRUCTION = [
-  'Investigate the owned Inventory Retry Storm demo using read-only MCP evidence.',
-  'You must call get_retry_pressure exactly once before answering.',
-  'Use only the returned observation as evidence and label any causal explanation as inferred.',
-  'Do not request mutation, approval, sandbox, subagent, user-question, or other external capability.',
+export const V004_PROOF_INSTRUCTION = [
+  'Investigate the owned Inventory Retry Storm demo and complete the bounded v0.004 reproduction chain.',
+  'Call get_retry_pressure exactly once and wait for its read-only MCP response.',
+  'Treat that MCP response as OBSERVED owned-demo evidence only.',
+  'Then call the TrueForge sandbox exec tool exactly once.',
+  `Use exactly this intent: ${ROOK_V004_SANDBOX_INTENT}`,
+  `Use exactly this command: ${ROOK_V004_SANDBOX_COMMAND}`,
+  'Do not supply cwd, env, files, network requests, package installation, another command, another tool, mutation, approval, subagent, or user-question capability.',
+  'Treat the sandbox result as REPRODUCED evidence only; it is not applied remediation or verified recovery.',
 ].join(' ')
 
 const statusCopy: Record<ProofStatus, { label: string; detail: string }> = {
   unconfigured: {
-    label: 'READ-ONLY MCP NOT CONFIGURED',
-    detail: 'Local TrueForge evidence is unavailable. The surrounding incident workspace remains fixture-only.',
+    label: 'V0.004 CLIENT NOT CONFIGURED',
+    detail: 'The local TrueForge origin/model are unavailable. No live observation or sandbox reproduction claim can be promoted.',
   },
   idle: {
-    label: 'MCP INVESTIGATION READY',
-    detail: 'Local configuration is valid. No read-only MCP incident evidence has been observed yet.',
+    label: 'V0.004 CLIENT READY',
+    detail: 'The local TrueForge origin/model are configured. Sandbox availability is not assumed; it is proven only by a successful retained sandbox.created → exec → response chain.',
   },
   connecting: {
-    label: 'OBSERVING READ-ONLY MCP',
-    detail: 'Waiting for a real TrueForge session, correlated MCP call/response evidence, and one successful terminal turn.',
+    label: 'RUNNING BOUNDED REPRODUCTION',
+    detail: 'Waiting for OBSERVED read-only MCP evidence followed by a real TrueForge sandbox creation, exact exec, matching response, and one successful terminal turn.',
   },
-  observed: {
-    label: 'LIVE READ-ONLY MCP EVIDENCE',
-    detail: 'ROOK observed a real TrueForge turn and correlated read-only MCP evidence from the running owned non-production demo source. This is demo evidence, not production telemetry.',
+  reproduced: {
+    label: 'OBSERVED + REPRODUCED EVIDENCE',
+    detail: 'ROOK retained both the owned-demo read-only observation and the bounded TrueForge sandbox reproduction. Reproduction is not remediation and is not recovery verification.',
   },
   failed: {
-    label: 'MCP INVESTIGATION FAILED',
-    detail: 'The evidence chain did not satisfy the v0.003 gate. ROOK is not promoting this attempt to an observed incident claim.',
+    label: 'V0.004 EVIDENCE GATE FAILED',
+    detail: 'The retained chain did not satisfy the v0.004 observation-plus-reproduction contract. ROOK is not promoting this attempt as reproduced evidence.',
   },
 }
 
@@ -59,9 +68,9 @@ const eventDetail = (event: HarnessEvent): string => {
     case 'tool.returned':
       return `unexpected tool call ${event.callId}`
     case 'sandbox.started':
-      return `unexpected sandbox ${event.sandboxId}`
+      return `sandbox created · ${event.sandboxId}`
     case 'sandbox.exec.called':
-      return `sandbox exec · call ${event.callId}`
+      return `bounded sandbox exec · call ${event.callId}`
     case 'sandbox.exec.returned':
       return `correlated sandbox response · call ${event.callId}`
     case 'subagent.started':
@@ -112,7 +121,7 @@ export default function TrueForgeProof() {
       try {
         await adapter.runTurn({
           sessionId: observedSession.sessionId,
-          instruction: V003_PROOF_INSTRUCTION,
+          instruction: V004_PROOF_INSTRUCTION,
         })
       } finally {
         unsubscribe()
@@ -123,26 +132,30 @@ export default function TrueForgeProof() {
         throw new Error('No terminal TrueForge turn evidence was observed.')
       }
       if (!selectLatestObservedRetryPressure(turnEvents)) {
-        throw new Error('No evidence-backed retry-pressure observation passed the owned demo projection gate.')
+        throw new Error('No evidence-backed retry-pressure OBSERVED claim passed the owned-demo projection gate.')
+      }
+      if (!selectLatestReproducedRetryPressure(turnEvents)) {
+        throw new Error('No evidence-backed REPRODUCED sandbox claim passed the v0.004 projection gate.')
       }
 
-      setStatus('observed')
+      setStatus('reproduced')
     } catch (cause) {
       setStatus('failed')
-      setError(cause instanceof Error ? cause.message : 'TrueForge MCP investigation failed.')
+      setError(cause instanceof Error ? cause.message : 'TrueForge v0.004 sandbox reproduction failed.')
     }
   }
 
   const copy = statusCopy[status]
-  const recentEvents = events.slice(-10)
+  const recentEvents = events.slice(-12)
   const retryPressure = selectLatestObservedRetryPressure(events)
+  const reproduction = selectLatestReproducedRetryPressure(events)
 
   return (
     <section className={`harness-proof proof-${status}`} aria-labelledby="trueforge-proof-title">
       <header className="harness-proof-header">
         <div>
-          <span className="harness-kicker">TRUEFORGE · v0.003 read-only incident evidence</span>
-          <h2 id="trueforge-proof-title">Governed MCP investigation boundary</h2>
+          <span className="harness-kicker">TRUEFORGE · v0.004 observed + sandbox reproduction evidence</span>
+          <h2 id="trueforge-proof-title">Governed observation → reproduction boundary</h2>
         </div>
         <span className="harness-proof-state">{copy.label}</span>
       </header>
@@ -156,7 +169,8 @@ export default function TrueForgeProof() {
               <div><dt>Origin</dt><dd>{configuration.baseUrl}</dd></div>
               <div><dt>Model</dt><dd>{configuration.modelName}</dd></div>
               <div><dt>MCP</dt><dd>rook-inventory-retry-storm · @read-only</dd></div>
-              <div><dt>Authority</dt><dd>read-only MCP · no sandbox · no subagents · no mutation</dd></div>
+              <div><dt>Sandbox</dt><dd>TrueForge exec · file downloads disabled</dd></div>
+              <div><dt>Authority</dt><dd>read-only incident source · isolated reproduction · no incident mutation</dd></div>
             </dl>
           ) : (
             <div className="harness-config-warning">
@@ -173,10 +187,10 @@ export default function TrueForgeProof() {
             onClick={() => void verifyConnection()}
           >
             {status === 'connecting'
-              ? 'Investigating through MCP…'
-              : status === 'observed'
-                ? 'Run a new read-only investigation'
-                : 'Run read-only investigation'}
+              ? 'Running bounded reproduction…'
+              : status === 'reproduced'
+                ? 'Run a new bounded reproduction'
+                : 'Run bounded sandbox reproduction'}
           </button>
 
           {error && <p className="harness-error" role="alert">{error}</p>}
@@ -184,7 +198,7 @@ export default function TrueForgeProof() {
 
         <div className="harness-evidence" aria-live="polite">
           <div className="harness-evidence-heading">
-            <span>Observed evidence chain</span>
+            <span>Evidence chain · OBSERVED → REPRODUCED</span>
             <small>{session ? `${events.length} retained event${events.length === 1 ? '' : 's'}` : 'no live session yet'}</small>
           </div>
 
@@ -206,6 +220,28 @@ export default function TrueForgeProof() {
               </p>
               <small>
                 call {retryPressure.callId} · call event {retryPressure.callSourceEventId} · response event {retryPressure.responseSourceEventId}
+              </small>
+            </article>
+          )}
+
+          {reproduction && (
+            <article className="sandbox-reproduction" aria-label="Reproduced retry pressure in TrueForge sandbox">
+              <div className="sandbox-reproduction-title">
+                <span>REPRODUCED · TRUEFORGE SANDBOX</span>
+                <strong>Retry-pressure arithmetic</strong>
+              </div>
+              <div className="sandbox-reproduction-metrics">
+                <div><span>Retry multiplier</span><strong>{reproduction.retryMultiplier.toFixed(1)}×</strong></div>
+                <div><span>Attempts / min</span><strong>{formatInteger(reproduction.attemptsPerMinute)}</strong></div>
+                <div><span>Queue depth</span><strong>{formatInteger(reproduction.queueDepth)}</strong></div>
+                <div><span>Queue saturation</span><strong>{reproduction.queueSaturationPct}%</strong></div>
+              </div>
+              <p>
+                Sandbox <code>{reproduction.sandboxId}</code> returned the exact deterministic reproduction payload.
+                This is <strong>not</strong> applied remediation and <strong>not</strong> verified recovery.
+              </p>
+              <small>
+                call {reproduction.callId} · call event {reproduction.callSourceEventId} · sandbox event {reproduction.sandboxSourceEventId} · response event {reproduction.responseSourceEventId}
               </small>
             </article>
           )}
@@ -232,8 +268,8 @@ export default function TrueForgeProof() {
             </>
           ) : (
             <div className="harness-evidence-empty">
-              <span>NO LIVE MCP EVIDENCE OBSERVED</span>
-              <p>The surrounding Inventory Retry Storm workspace remains fixture data until a matching read-only MCP observation is retained and projected here.</p>
+              <span>NO LIVE V0.004 EVIDENCE RETAINED</span>
+              <p>The incident workspace remains fixture-only until a matching read-only MCP observation and bounded TrueForge sandbox reproduction are both retained.</p>
             </div>
           )}
         </div>
