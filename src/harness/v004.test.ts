@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { HarnessEvent, IncidentSessionRequest } from './adapter'
 import type { TrueForgeSessionSeed, TrueForgeStreamItem, TrueForgeTransport } from './trueforge'
 import {
+  ROOK_V004_REPRODUCTION_INPUT,
   ROOK_V004_RUNTIME_GUARDRAILS,
   ROOK_V004_SANDBOX_COMMAND,
   ROOK_V004_SANDBOX_INTENT,
@@ -38,12 +39,35 @@ const mcpCall = () => ({
   }],
 })
 
-const mcpResponse = () => ({
+const retryPressurePayload = (dataOverrides: Record<string, unknown> = {}) => ({
+  source: {
+    system: 'rook-owned-demo-source',
+    scenarioId: 'inventory-retry-storm-v1',
+    classification: 'owned-demo-non-production',
+    kind: 'retry-pressure',
+    sourceTimestamp: '2026-08-29T18:59:56.000Z',
+    observationWindow: {
+      start: '2026-08-29T18:54:56.000Z',
+      end: '2026-08-29T18:59:56.000Z',
+    },
+  },
+  data: {
+    attemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute,
+    baselineAttemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute,
+    retryMultiplier: ROOK_V004_REPRODUCTION_INPUT.retryMultiplier,
+    sharedQueueDepth: ROOK_V004_REPRODUCTION_INPUT.queueDepth,
+    sharedQueueSaturationPct: ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct,
+    pressureSource: 'inventory-retry-queue',
+    ...dataOverrides,
+  },
+})
+
+const mcpResponse = (dataOverrides: Record<string, unknown> = {}) => ({
   id: 'evt_mcp_response',
   type: 'tool.response',
   threadId: 'main',
   toolCallId: 'call_mcp',
-  content: '{"source":{"classification":"owned-demo-non-production"},"data":{"retryMultiplier":5.3}}',
+  content: JSON.stringify(retryPressurePayload(dataOverrides)),
   createdAt: '2026-08-29T18:59:56.000Z',
 })
 
@@ -75,11 +99,11 @@ const sandboxCreated = () => ({
 
 const reproductionResult = () => JSON.stringify({
   kind: 'rook-v004-reproduction',
-  retryMultiplier: 5.3,
-  attemptsPerMinute: 4800,
-  baselineAttemptsPerMinute: 900,
-  queueDepth: 7200,
-  queueSaturationPct: 91,
+  retryMultiplier: ROOK_V004_REPRODUCTION_INPUT.retryMultiplier,
+  attemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute,
+  baselineAttemptsPerMinute: ROOK_V004_REPRODUCTION_INPUT.baselineAttemptsPerMinute,
+  queueDepth: ROOK_V004_REPRODUCTION_INPUT.queueDepth,
+  queueSaturationPct: ROOK_V004_REPRODUCTION_INPUT.queueSaturationPct,
 }) + '\n'
 
 const sandboxResponse = (overrides: Record<string, unknown> = {}) => ({
@@ -197,7 +221,7 @@ describe('normalizeV004TrueForgeEvent', () => {
 })
 
 describe('V004TrueForgeHarnessAdapter evidence correlation', () => {
-  it('passes only after observed MCP evidence then sandbox creation, one successful bounded exec response, and one successful terminal', async () => {
+  it('passes only after the canonical OBSERVED values are correlated, then sandbox creation, one successful bounded exec response, and one successful terminal', async () => {
     const { adapter, transport, observed } = await run([
       mcpCall(),
       mcpResponse(),
@@ -217,6 +241,20 @@ describe('V004TrueForgeHarnessAdapter evidence correlation', () => {
       'sandbox.exec.returned',
       'turn.completed',
     ])
+  })
+
+  it('fails closed if the retained OBSERVED values drift from the deterministic reproduction input', async () => {
+    const { adapter } = createAdapter([
+      mcpCall(),
+      mcpResponse({ attemptsPerMinute: 4900 }),
+      sandboxCall(),
+      sandboxCreated(),
+      sandboxResponse(),
+      turnDone(),
+    ])
+    const session = await adapter.createIncidentSession(request)
+    await expect(adapter.runTurn({ sessionId: session.sessionId, instruction: 'Run.' })).rejects.toThrow(/OBSERVED retry-pressure values do not match the deterministic reproduction input contract/i)
+    expect(adapter.connectionState).toBe('failed')
   })
 
   it('fails closed if sandbox execution begins before the MCP observation is correlated', async () => {
