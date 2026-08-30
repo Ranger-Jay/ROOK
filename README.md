@@ -97,39 +97,53 @@ Feature branch:
 feat/v0.004-sandbox-reproduction
 ```
 
-PR #12 implements the next proof boundary:
+PR #12 implements the next proof boundary using **two distinct least-authority TrueForge sessions**:
 
 ```text
-OBSERVED owned-demo MCP evidence
-→ TrueForge sandbox creation
-→ bounded deterministic exec
-→ correlated sandbox tool.response
+TrueForge observation session
+  read-only MCP attached
+  sandbox disabled
+→ get_retry_pressure
+→ correlated OBSERVED evidence
+→ exact ROOK evidence gate
+→ only then create a separate TrueForge reproduction session
+  no MCP connector
+  sandbox enabled / downloads disabled
+→ TrueForge exec
+→ Daytona sandbox.created
+→ correlated zero-exit sandbox tool.response
 → REPRODUCED evidence
 ```
 
 v0.004 is **not released yet**. Authentic Daytona-backed sandbox capture remains a release requirement.
 
-### v0.004 authority boundary
+### v0.004 split-authority boundary
 
-The configured TrueForge agent retains the v0.003 owned MCP attachment:
+The observation session has only the owned read-only MCP boundary:
 
 ```text
 server:      rook-inventory-retry-storm
 enableTools: ["@read-only"]
 preload:     true
+sandbox:     disabled
 ```
 
-The v0.004 runtime additionally enables the TrueForge sandbox while explicitly keeping unrelated authority disabled:
+ROOK does not create the sandbox-authorized reproduction session until the observation call/response is correlated and the exact numeric OBSERVED contract passes.
+
+The reproduction session is deliberately different:
 
 ```text
-sandbox:                    enabled
-sandbox file downloads:     disabled
-dynamic subagents:          disabled
-ask-user tools:             disabled
-Generative UI:              disabled
-skills:                     none
-incident mutation tools:    none
+MCP connectors:              none
+sandbox:                     enabled
+sandbox file downloads:      disabled
+dynamic subagents:           disabled
+ask-user tools:              disabled
+Generative UI:               disabled
+skills:                      none
+incident mutation tools:     none
 ```
+
+This separation is both a safety boundary and a reliability boundary. The observer cannot execute code; the reproducer cannot reach the incident evidence source. TrueForge 0.1.3 adds the sandbox separately from attached MCP/user tool sets, so the sandbox-only session also removes irrelevant MCP discovery helpers from the local model's reproduction context.
 
 TrueForge 0.1.3 supports Daytona as its sandbox provider. ROOK does not treat sandbox execution as remediation authority.
 
@@ -137,17 +151,20 @@ TrueForge 0.1.3 supports Daytona as its sandbox provider. ROOK does not treat sa
 
 The proof requires this ordering:
 
-1. exactly one `get_retry_pressure` call from the owned read-only MCP;
-2. matching MCP response on the same call/thread;
-3. the payload must pass the owned-demo OBSERVED projector;
-4. the retained OBSERVED numeric values must exactly match the deterministic reproduction-input contract;
-5. exactly one public TrueForge system-tool call identified as `truefoundry-system / exec`;
-6. exact bounded `intent` and `command` arguments, with no `cwd`, `env`, or extra keys;
-7. exactly one real `sandbox.created` event;
-8. matching sandbox `tool.response` on the same call/thread;
-9. Daytona provider success, sandbox exit code `0`, and exact deterministic output;
-10. exactly one successful `turn.done` with zero required actions;
-11. no approval, auth pause, subagent, user-supplied tool response, or incident mutation activity.
+1. create one observation TrueForge session with read-only MCP and sandbox disabled;
+2. exactly one `get_retry_pressure` call from the owned MCP;
+3. matching MCP response on the same call/thread;
+4. the payload must pass the owned-demo OBSERVED projector;
+5. retained OBSERVED numeric values must exactly match the deterministic reproduction-input contract;
+6. only after steps 1–5, create a **second distinct** TrueForge session with sandbox enabled and no MCP connector;
+7. exactly one public TrueForge system-tool call identified as `truefoundry-system / exec`;
+8. exact bounded `intent` and `command` arguments, with no `cwd`, `env`, or extra keys;
+9. exactly one real `sandbox.created` event;
+10. matching sandbox `tool.response` on the same call/thread;
+11. Daytona provider success, sandbox exit code `0`, and exact deterministic output;
+12. exactly two successful `turn.done` events with zero required actions — one per session;
+13. no approval, auth pause, subagent, user-supplied tool response, or incident mutation activity;
+14. no sandbox execution in the observation session and no MCP activity in the reproduction session.
 
 Any drift fails closed.
 
@@ -164,7 +181,7 @@ Success label:
 OBSERVED + REPRODUCED EVIDENCE
 ```
 
-That label explicitly does **not** mean applied remediation or verified recovery.
+The UI also exposes both TrueForge session IDs so the authority split is judge-visible. That label explicitly does **not** mean applied remediation or verified recovery.
 
 ### Execution-policy distinction
 
@@ -172,15 +189,23 @@ TrueForge owns its built-in sandbox execution inside Daytona. ROOK cannot interc
 
 ROOK's exact-command validation is therefore a **public-evidence acceptance gate**, not a pre-execution shell firewall. A command that drifts from the bounded proof contract cannot become valid v0.004 evidence.
 
-### Qodo findings incorporated
+## Qodo Code Review Evidence
 
-PR #12 review has already converted substantive findings into guardrails:
+ROOK's substantive milestones are developed through pull requests with Qodo review before human release authority.
 
-- v0.004 live runtime was initially not wired and was corrected to use `V004TrueForgeHarnessAdapter` / `V004SdkTrueForgeTransport`;
-- sandbox provider failure/non-zero exit initially could reach a successful adapter return and was corrected to fail closed;
-- REPRODUCED evidence was initially not numerically bound to the retained OBSERVED values and was corrected so the adapter validates the owned-demo projection and exact reproduction inputs before permitting the sandbox evidence chain to advance.
+Representative public review trails:
 
-Each correction is regression-tested. Final Qodo review is repeated on the exact release candidate head after authentic capture/documentation is complete.
+- [PR #7 — released v0.003 read-only MCP proof](https://github.com/Ranger-Jay/ROOK/pull/7)
+- [PR #12 — active v0.004 sandbox reproduction proof](https://github.com/Ranger-Jay/ROOK/pull/12)
+
+On PR #12, Qodo identified two valid Medium findings in the first substantive v0.004 review:
+
+1. the new v0.004 contract existed in tests but had not yet been wired into the configured runtime path;
+2. a failed/non-zero sandbox provider result could reach a successful adapter return.
+
+Both were fixed and regression-tested. A follow-up Qodo review verified those findings closed. Subsequent review also drove tighter OBSERVED-to-REPRODUCED numeric binding and fail-closed correlation checks. The exact final release-candidate head receives another Qodo pass after the authentic sandbox architecture/capture changes are complete.
+
+Screenshots are not used as a substitute for this public PR review trail.
 
 Authentic v0.004 runbook: [`docs/TRUEFORGE_V0.004.md`](./docs/TRUEFORGE_V0.004.md)
 
@@ -227,7 +252,7 @@ TrueForge 0.1.3 was observed binding IPv6 loopback (`[::1]:8790`), so `localhost
 
 Pinned TrueForge 0.1.3 requires a server-side sandbox provider. Its registered provider is Daytona.
 
-The first authentic attempt uses Daytona's official default snapshot:
+The authentic attempt uses Daytona's official default snapshot:
 
 ```text
 daytona-small
@@ -270,7 +295,8 @@ ROOK uses the official `@truefoundry/trueforge-sdk` and retains harness evidence
 
 Implemented boundaries include:
 
-- real session creation and streamed turns;
+- real inline TrueForge session creation and streamed turns;
+- split observation/sandbox session authority;
 - official SDK folding of streamed `model.message.delta` events;
 - exact MCP provenance and tool-call IDs;
 - correlated `tool.response` evidence;
@@ -320,4 +346,4 @@ AI coding and design assistants are used as development collaborators. Architect
 
 **Released:** v0.003 on `main`.
 
-**In development:** v0.004 on PR #12. Code/CI/Qodo review is advancing, but v0.004 remains pre-release until a real Daytona-backed TrueForge sandbox chain produces retained `OBSERVED + REPRODUCED EVIDENCE`, the final exact head clears review/CI, and a human authorizes release/merge.
+**In development:** v0.004 on PR #12. v0.004 remains pre-release until a real Daytona-backed split-authority TrueForge chain produces retained `OBSERVED + REPRODUCED EVIDENCE`, the final exact head clears review/CI, and a human authorizes release/merge.
