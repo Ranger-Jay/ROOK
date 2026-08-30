@@ -56,9 +56,9 @@ function App() {
 
         <div className="sidebar-spacer" />
         <div className="sidebar-status">
-          <span>TRUEFORGE · v0.003</span>
-          <strong>Governed read-only MCP boundary</strong>
-          <small>Live owned-demo observations are promoted only from correlated MCP evidence. All other incident fields remain fixture data.</small>
+          <span>TRUEFORGE · v0.004</span>
+          <strong>Governed observation → reproduction boundary</strong>
+          <small>Owned-demo observations and isolated sandbox reproductions are promoted only from correlated evidence. All other incident fields remain fixture data.</small>
         </div>
       </aside>
 
@@ -68,7 +68,7 @@ function App() {
             <span className="crumb">Incidents / INC-2048</span>
           </div>
           <div className="topbar-state">
-            <span className="fixture-pill">FIXTURE INCIDENT DATA · v0.003-dev</span>
+            <span className="fixture-pill">FIXTURE INCIDENT DATA · v0.004-dev</span>
             <span className="operator">JAY · ADMIN</span>
           </div>
         </header>
@@ -134,11 +134,11 @@ function App() {
             </article>
 
             <article className="panel sandbox-panel">
-              <header><span>Sandbox boundary</span><small>DESIGN · v0.004</small></header>
+              <header><span>Sandbox boundary</span><small>PRE-RELEASE · v0.004</small></header>
               <div className="sandbox-box">
                 <span>TRUEFORGE SANDBOX</span>
-                <strong>Not enabled in v0.003</strong>
-                <p>Agent-written diagnostics remain a future milestone.</p>
+                <strong>Bounded reproduction path configured</strong>
+                <p>Only exact evidence-gated sandbox reproduction is accepted; no incident mutation path is enabled.</p>
               </div>
               <div className="production-lock">
                 <span>PRODUCTION · LOCKED</span>
@@ -160,8 +160,8 @@ function App() {
           </section>
 
           <section className="safety-note">
-            <div className="safety-rule"><span>SAFETY LAW</span><strong>Observed ≠ inferred.</strong></div>
-            <p>ROOK may investigate this owned demo through positively classified read-only MCP tools. It cannot use sandbox, subagents, approvals, or mutation authority in v0.003, and a causal conclusion remains inferred unless its retained evidence chain is shown.</p>
+            <div className="safety-rule"><span>SAFETY LAW</span><strong>Observed ≠ inferred · reproduced ≠ applied.</strong></div>
+            <p>ROOK may investigate this owned demo through positively classified read-only MCP tools and reproduce bounded arithmetic in an isolated TrueForge sandbox. It cannot use subagents, approvals, or incident mutation authority in v0.004, and reproduced output is not applied remediation or verified recovery.</p>
           </section>
         </div>
       </main>

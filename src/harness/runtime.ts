@@ -4,10 +4,8 @@ import {
   TRUEFORGE_BROWSER_PROXY_BASE,
   assertLocalTrueForgeUrl,
 } from './localProxy'
-import {
-  V003SdkTrueForgeTransport,
-  V003TrueForgeHarnessAdapter,
-} from './v003'
+import { V004SplitAuthorityTrueForgeHarnessAdapter } from './v004SplitAuthority'
+import { V004SplitAuthoritySdkTransport } from './v004SplitAuthorityTransport'
 
 export interface HarnessEnvironment {
   VITE_TRUEFORGE_URL?: string
@@ -67,8 +65,8 @@ export function createHarnessAdapter(configuration: HarnessRuntimeConfiguration)
     return new UnconfiguredHarnessAdapter(configuration.reason)
   }
 
-  return new V003TrueForgeHarnessAdapter(
+  return new V004SplitAuthorityTrueForgeHarnessAdapter(
     { modelName: configuration.modelName },
-    new V003SdkTrueForgeTransport({ baseUrl: TRUEFORGE_BROWSER_PROXY_BASE }),
+    new V004SplitAuthoritySdkTransport({ baseUrl: TRUEFORGE_BROWSER_PROXY_BASE }),
   )
 }

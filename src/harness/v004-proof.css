@@ -1,0 +1,117 @@
+.proof-reproduced .harness-proof-state {
+  border-color: var(--rook-cyan);
+  color: var(--rook-cyan);
+}
+
+.live-observation,
+.sandbox-reproduction {
+  display: grid;
+  gap: .62rem;
+  margin-bottom: .72rem;
+  padding: .78rem .82rem;
+  border: 1px solid var(--rook-border-default);
+  border-radius: var(--rook-radius-lg);
+  background: rgba(20, 25, 34, .7);
+}
+
+.live-observation {
+  border-left: 2px solid var(--rook-cyan);
+  background: var(--rook-info-bg);
+}
+
+.sandbox-reproduction {
+  border-left: 2px solid var(--rook-violet);
+  background: var(--rook-ai-bg);
+}
+
+.live-observation-title,
+.sandbox-reproduction-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.live-observation-title span,
+.sandbox-reproduction-title span {
+  font: 600 .55rem/1 var(--rook-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.live-observation-title span { color: var(--rook-cyan); }
+.sandbox-reproduction-title span { color: var(--rook-violet-text); }
+
+.live-observation-title strong,
+.sandbox-reproduction-title strong {
+  color: var(--rook-text-primary);
+  font: 600 .72rem/1.2 var(--rook-font-display);
+}
+
+.live-observation-metrics,
+.sandbox-reproduction-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.live-observation-metrics div,
+.sandbox-reproduction-metrics div {
+  min-width: 0;
+  padding: .52rem .56rem;
+  border-top: 1px solid var(--rook-border-subtle);
+  background: rgba(8, 10, 14, .24);
+}
+
+.live-observation-metrics span,
+.sandbox-reproduction-metrics span {
+  display: block;
+  color: var(--rook-text-muted);
+  font-size: .54rem;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.live-observation-metrics strong,
+.sandbox-reproduction-metrics strong {
+  display: block;
+  margin-top: .3rem;
+  color: var(--rook-text-primary);
+  font: 600 .78rem/1 var(--rook-font-mono);
+}
+
+.live-observation p,
+.sandbox-reproduction p {
+  margin: 0;
+  color: var(--rook-text-secondary);
+  font-size: .63rem;
+  line-height: 1.45;
+}
+
+.live-observation code,
+.sandbox-reproduction code {
+  color: var(--rook-cyan);
+  font-family: var(--rook-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.live-observation > small,
+.sandbox-reproduction > small {
+  color: var(--rook-text-muted);
+  font: 500 .52rem/1.35 var(--rook-font-mono);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .live-observation-title,
+  .sandbox-reproduction-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .live-observation-metrics,
+  .sandbox-reproduction-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -4,293 +4,346 @@
 
 ROOK is an approval-gated AI incident commander built for the 2026 TrueForge Agent Harness Hackathon.
 
-Its operational contract is simple:
-
 > **Investigate autonomously. Mutate only with human authority. Verify recovery with evidence.**
 
-## For judges
-
-ROOK is an approval-gated AI incident commander built on TrueForge for the 2026 Agent Harness Hackathon. It is designed so that no incident claim reaches the interface unless retained harness evidence supports it; everything else stays visibly labeled `FIXTURE`.
-
-Verify the build with no TrueForge installation and no network calls to a model:
-
-```bash
-npm install
-npm test
-```
-
-`npm test` runs the unit suite. For the remaining CI checks, run `npm run tokens:check` and `npm run build`.
-
-- **Representative merged pull request** (hackathon submission requirement): [PR #5 - v0.002 live TrueForge session and evidence boundary](https://github.com/Ranger-Jay/ROOK/pull/5), merged into main.
-- **v0.003 review/release trail:** [PR #7 - owned MCP demo stack and read-only incident investigation](https://github.com/Ranger-Jay/ROOK/pull/7).
-
-ROOK releases milestones through reviewed pull requests. PR #7 carries `v0.003`: authentic local MCP proof passed, the final substantive code passed exact-head CI and Qodo review, and human release authority was granted before the release metadata was promoted.
-
-Current v0.003 proof is intentionally narrow: owned demo source -> read-only MCP -> TrueForge model tool call -> correlated tool.response -> evidence-backed UI. Sandbox, subagents, approval, mutation, remediation, and recovery remain later milestones and are not claimed by v0.003.
-
-The canonical demo is the **Inventory Retry Storm**: a faulty retry/backoff deployment in a fictional commerce stack creates retry pressure on shared infrastructure. ROOK is built milestone-by-milestone so every public capability claim has a real evidence chain behind it.
-
-## ROOK Truth Doctrine
-
-ROOK is not designed to appear autonomous. ROOK is designed to make autonomy accountable.
+ROOK is built around one non-negotiable rule:
 
 > **Never simulate proof. If a capability does not exist, remove the claim.**
 
 `CLAIM → EVIDENCE → PUBLIC TRUTH`
 
-The state model preserves distinctions that persuasive interfaces often blur:
+## For judges
 
-- **Observed ≠ inferred.** A tool result is evidence; a causal explanation is a conclusion.
-- **Proposed ≠ approved.** A recommendation is not authority.
-- **Applied ≠ verified.** Execution is not recovery.
-- **Verified ≠ policy.** A proven lesson is not automatically active enforcement.
+ROOK uses TrueForge as the actual agent runtime. Its interface promotes incident claims only when retained harness evidence satisfies the milestone-specific gate; unproven surrounding surfaces remain visibly `FIXTURE` or `DESIGN`.
+
+Verify the repository without a TrueForge installation or model network call:
+
+```bash
+npm install
+npm test
+npm run tokens:check
+npm run build
+```
+
+Review trail:
+
+- **PR #5** — v0.002 authentic TrueForge session/turn boundary, merged.
+- **PR #7** — v0.003 owned read-only MCP investigation, released and merged.
+- **PR #12** — v0.004 TrueForge sandbox reproduction, active pre-release development.
+
+The canonical demo incident is **Inventory Retry Storm**, an owned fictional non-production commerce stack used to prove the agent/evidence workflow without claiming production telemetry.
+
+## Truth doctrine
+
+ROOK preserves distinctions that agent interfaces often blur:
+
+- **Observed ≠ inferred.** A retained tool result can be evidence; a causal explanation is still a conclusion.
+- **Reproduced ≠ applied.** Code execution in a sandbox is not remediation.
+- **Proposed ≠ approved.** A recommendation has no mutation authority.
+- **Applied ≠ verified.** Executing a change is not proof of recovery.
+- **Verified ≠ policy.** A demonstrated recovery does not silently become organizational policy.
 - **AI proposes. Human authorizes.** Privileged mutation remains a human decision.
-- **Green is earned.** Verified Green appears only after required recovery evidence passes.
+- **Green is earned.** Verified Green appears only after recovery evidence passes.
 
-Functional claims advance only as evidence advances:
+Functional claims move through:
 
 `design intent → implemented → authentic run → cleared public claim`
 
-Fixture and reference surfaces remain labeled until authentic TrueForge evidence replaces them.
+## Released baseline — v0.003 ✅
 
-## Current milestone
+`VERSION` on `main` is `v0.003`.
 
-`v0.003` — owned read-only MCP incident investigation and evidence correlation.
-
-### Released baseline: v0.002
-
-PR #5 established and authentically demonstrated:
-
-- real local TrueForge session creation;
-- real streamed model turn;
-- same-origin ROOK → TrueForge browser transport;
-- source event IDs/timestamps/sequence/thread provenance;
-- exactly one terminal `turn.done`;
-- fail-closed handling of malformed or unexpected capability events;
-- explicit separation between live harness evidence and fixture incident data.
-
-v0.002 remains the historical released baseline from which v0.003 was developed.
-
-### Implemented on v0.003 PR #7
-
-ROOK contains an owned non-production demo evidence stack:
+v0.003 authentically demonstrated:
 
 ```text
-owned demo source :8792
-        │ read-only GET
-        ▼
-ROOK MCP server :8791/mcp
-        │ Streamable HTTP MCP
-        ▼
-TrueForge :8790
-        │ model tool call + tool.response
-        ▼
-ROOK evidence contract
-        │ correlated provenance
-        ▼
-evidence-backed retry-pressure surface
+owned demo source
+→ ROOK read-only MCP
+→ TrueForge 0.1.3
+→ local tool-capable Qwen model
+→ get_retry_pressure
+→ real tool.response
+→ ROOK call/response correlation
+→ OBSERVED owned-demo evidence
 ```
 
-The owned MCP server exposes exactly:
+The authentic v0.003 proof used:
+
+```text
+connector: rook-inventory-retry-storm
+model:     ollama-local/qwen2-5-1-5b
+session:   01m17a7g48yk63nzcyenrf8pqt
+turn:      01m17a7gq43apay5tppvhgtr4q.local
+```
+
+Observed owned-demo values were:
+
+```text
+retry multiplier:  5.3x
+attempts/minute:   4,800
+queue depth:       7,200
+queue saturation:  91%
+classification:    owned-demo-non-production
+```
+
+The v0.003 release passed exact-head CI and Qodo review before explicit human release/merge authority and PR #7 merge.
+
+Historical procedure: [`docs/TRUEFORGE_V0.003.md`](./docs/TRUEFORGE_V0.003.md)
+
+## Active milestone — v0.004 pre-release
+
+Feature branch:
+
+```text
+feat/v0.004-sandbox-reproduction
+```
+
+PR #12 implements the next proof boundary using **two distinct least-authority TrueForge sessions**:
+
+```text
+TrueForge observation session
+  read-only MCP attached
+  sandbox disabled
+→ get_retry_pressure
+→ correlated OBSERVED evidence
+→ exact ROOK evidence gate
+→ only then create a separate TrueForge reproduction session
+  no MCP connector
+  sandbox enabled / downloads disabled
+→ TrueForge exec
+→ Daytona sandbox.created
+→ correlated zero-exit sandbox tool.response
+→ REPRODUCED evidence
+```
+
+v0.004 is **not released yet**. Authentic Daytona-backed sandbox capture remains a release requirement.
+
+### v0.004 split-authority boundary
+
+The observation session has only the owned read-only MCP boundary:
+
+```text
+server:      rook-inventory-retry-storm
+enableTools: ["@read-only"]
+preload:     true
+sandbox:     disabled
+```
+
+ROOK does not create the sandbox-authorized reproduction session until the observation call/response is correlated and the exact numeric OBSERVED contract passes.
+
+The reproduction session is deliberately different:
+
+```text
+MCP connectors:              none
+sandbox:                     enabled
+sandbox file downloads:      disabled
+dynamic subagents:           disabled
+ask-user tools:              disabled
+Generative UI:               disabled
+skills:                      none
+incident mutation tools:     none
+```
+
+This separation is both a safety boundary and a reliability boundary. The observer cannot execute code; the reproducer cannot reach the incident evidence source. TrueForge 0.1.3 adds the sandbox separately from attached MCP/user tool sets, so the sandbox-only session also removes irrelevant MCP discovery helpers from the local model's reproduction context.
+
+TrueForge 0.1.3 supports Daytona as its sandbox provider. ROOK does not treat sandbox execution as remediation authority.
+
+### Exact reproduction evidence contract
+
+The proof requires this ordering:
+
+1. create one observation TrueForge session with read-only MCP and sandbox disabled;
+2. exactly one `get_retry_pressure` call from the owned MCP;
+3. matching MCP response on the same call/thread;
+4. the payload must pass the owned-demo OBSERVED projector;
+5. retained OBSERVED numeric values must exactly match the deterministic reproduction-input contract;
+6. only after steps 1–5, create a **second distinct** TrueForge session with sandbox enabled and no MCP connector;
+7. exactly one public TrueForge system-tool call identified as `truefoundry-system / exec`;
+8. exact bounded `intent` and `command` arguments, with no `cwd`, `env`, or extra keys;
+9. exactly one real `sandbox.created` event;
+10. matching sandbox `tool.response` on the same call/thread;
+11. Daytona provider success, sandbox exit code `0`, and exact deterministic output;
+12. exactly two successful `turn.done` events with zero required actions — one per session;
+13. no approval, auth pause, subagent, user-supplied tool response, or incident mutation activity;
+14. no sandbox execution in the observation session and no MCP activity in the reproduction session.
+
+Any drift fails closed.
+
+The public UI cannot show the v0.004 success state until **both** projections exist:
+
+```text
+OBSERVED · OWNED DEMO MCP
+REPRODUCED · TRUEFORGE SANDBOX
+```
+
+Success label:
+
+```text
+OBSERVED + REPRODUCED EVIDENCE
+```
+
+The UI also exposes both TrueForge session IDs so the authority split is judge-visible. That label explicitly does **not** mean applied remediation or verified recovery.
+
+### Execution-policy distinction
+
+TrueForge owns its built-in sandbox execution inside Daytona. ROOK cannot intercept a model-issued sandbox shell command before TrueForge executes it.
+
+ROOK's exact-command validation is therefore a **public-evidence acceptance gate**, not a pre-execution shell firewall. A command that drifts from the bounded proof contract cannot become valid v0.004 evidence.
+
+## Qodo Code Review Evidence
+
+ROOK's substantive milestones are developed through pull requests with Qodo review before human release authority.
+
+Representative public review trails:
+
+- [PR #7 — released v0.003 read-only MCP proof](https://github.com/Ranger-Jay/ROOK/pull/7)
+- [PR #12 — active v0.004 sandbox reproduction proof](https://github.com/Ranger-Jay/ROOK/pull/12)
+
+On PR #12, Qodo identified two valid Medium findings in the first substantive v0.004 review:
+
+1. the new v0.004 contract existed in tests but had not yet been wired into the configured runtime path;
+2. a failed/non-zero sandbox provider result could reach a successful adapter return.
+
+Both were fixed and regression-tested. A follow-up Qodo review verified those findings closed. Subsequent review also drove tighter OBSERVED-to-REPRODUCED numeric binding and fail-closed correlation checks. The exact final release-candidate head receives another Qodo pass after the authentic sandbox architecture/capture changes are complete.
+
+Screenshots are not used as a substitute for this public PR review trail.
+
+Authentic v0.004 runbook: [`docs/TRUEFORGE_V0.004.md`](./docs/TRUEFORGE_V0.004.md)
+
+## Local owned evidence stack
+
+The owned non-production evidence source and MCP server remain:
+
+```text
+owned source:   http://127.0.0.1:8792
+read-only MCP:  http://127.0.0.1:8791/mcp
+```
+
+Start and verify both:
+
+```bash
+npm run demo:stack
+```
+
+The owned MCP inventory is exactly:
 
 1. `get_service_health`
 2. `get_retry_pressure`
 3. `get_deployment_history`
 4. `get_dependency_topology`
 
-Every tool declares:
+Every owned tool is positively annotated read-only/non-destructive/idempotent/closed-world.
 
-- `readOnlyHint: true`
-- `destructiveHint: false`
-- `idempotentHint: true`
-- `openWorldHint: false`
+## Current verified Windows topology
 
-The TrueForge v0.003 agent attaches only the configured server `rook-inventory-retry-storm` with:
+The prior authentic proof on Old Faithful established this local topology:
 
 ```text
-enableTools: ["@read-only"]
-preload: true
+TrueForge:  http://localhost:8790
+MCP:        http://127.0.0.1:8791/mcp
+source:     http://127.0.0.1:8792
+ROOK UI:    http://localhost:5173
+Ollama:     local
+model:      ollama-local/qwen2-5-1-5b
 ```
 
-Eager preload is required for the verified local Qwen tool-call path, but authority remains bounded by the named connector and positive `@read-only` selector. Unrelated default capabilities remain disabled:
+TrueForge 0.1.3 was observed binding IPv6 loopback (`[::1]:8790`), so `localhost` is the canonical TrueForge origin on that host. Fresh local state is rechecked before every authentic capture rather than assumed from an earlier run.
 
-- sandbox;
-- dynamic subagents;
-- ask-user-question tools;
-- Generative UI;
-- skills;
-- mutation authority.
+## Daytona requirement for v0.004
 
-### v0.003 evidence gate
+Pinned TrueForge 0.1.3 requires a server-side sandbox provider. Its registered provider is Daytona.
 
-A text response is not enough.
-
-The live investigation passes only after ROOK retains and correlates:
-
-1. a settled TrueForge `model.message` MCP tool call;
-2. its call ID, tool name, server identity, raw arguments, thread, source event ID/timestamp, and stream sequence;
-3. the matching `tool.response` linked by `toolCallId`;
-4. matching thread identity;
-5. exactly one successful `turn.done`;
-6. zero required actions;
-7. no approval, auth pause, sandbox, subagent, user-supplied response, or mutation activity.
-
-For the first promoted incident surface, the response must additionally prove:
+The authentic attempt uses Daytona's official default snapshot:
 
 ```text
-source.system = rook-owned-demo-source
-source.scenarioId = inventory-retry-storm-v1
-source.classification = owned-demo-non-production
-source.kind = retry-pressure
+daytona-small
 ```
 
-Only then may the UI display the observed retry-pressure card. All surrounding incident fields remain explicitly **FIXTURE** until they cross their own evidence gate.
+The Daytona API key is supplied only to the TrueForge server process through `SANDBOX_API_KEY`. It must never be committed, placed in `VITE_*`, posted to GitHub, or included in proof screenshots.
 
-## Release status
-
-v0.003 has satisfied its substantive release gates:
-
-- authentic local proof demonstrated `owned demo source → MCP → TrueForge tool call → tool.response → ROOK retained evidence → evidence-backed UI`;
-- the feature branch was reconciled with current `main` and remained mergeable;
-- the final substantive head passed CI;
-- Qodo reported 0 bugs, 0 rule violations, and 0 skill findings, with the earlier Medium finding resolved;
-- human release authority was explicitly granted.
-
-`VERSION` is therefore promoted to `v0.003`. The release metadata commit is rechecked by CI/Qodo before PR #7 is merged into `main`.
-
-## Run the v0.003 local proof
-
-The complete procedure is documented in:
-
-[`docs/TRUEFORGE_V0.003.md`](./docs/TRUEFORGE_V0.003.md)
-
-High-level local topology:
-
-### 1. Install
-
-```bash
-npm install
-```
-
-### 2. Start the owned proof stack
-
-```bash
-npm run demo:stack
-```
-
-This starts and verifies:
-
-```text
-owned demo source: http://127.0.0.1:8792
-read-only MCP:     http://127.0.0.1:8791/mcp
-```
-
-### 3. Configure the TrueForge connector
-
-With TrueForge 0.1.3 running locally, use:
-
-```bash
-ROOK_TRUEFORGE_URL=http://localhost:8790 npm run demo:trueforge-setup
-```
-
-The helper validates/creates the exact no-auth connector manifest. TrueForge 0.1.3 on the verified Windows runtime does not expose the SDK connector-tools listing route, so the helper does not use that unavailable endpoint. The owned MCP inventory is independently verified by `demo:stack`, while the authentic TrueForge turn proves the connector/model can invoke the bounded tool surface.
-
-### 4. Configure the non-secret ROOK local environment
-
-```text
-VITE_TRUEFORGE_URL=http://localhost:8790
-VITE_TRUEFORGE_MODEL=<exact configured TrueForge model identifier>
-```
-
-Never place API keys, tokens, passwords, or other credentials in `VITE_*` variables.
-
-### 5. Start ROOK
-
-```bash
-npm run dev
-```
-
-In the ROOK command surface choose **Run read-only investigation**.
-
-A successful authentic capture shows `LIVE READ-ONLY MCP EVIDENCE`, the evidence-backed retry-pressure card, source event provenance, and exactly one terminal `turn.done`.
+If the default snapshot cannot initialize the pinned TrueForge runtime, ROOK records the authentic failure and uses a dedicated compatible snapshot; it does not weaken or simulate the evidence contract.
 
 ## Milestone sequence
 
-- **v0.001** — domain/safety foundation and command shell
+- **v0.001** — domain/safety foundation ✅
 - **v0.002** — authentic TrueForge session/turn boundary ✅
 - **v0.003** — owned read-only MCP investigation and live incident evidence ✅
-- **v0.004** — sandbox reproduction and delegated investigators ← next
-- **v0.005** — human approval and bounded authorized remediation
-- **v0.006** — independent recovery verification and audit trail
+- **v0.004** — authentic sandbox reproduction ← active pre-release
+- **v0.005** — human approval + bounded authorized remediation
+- **v0.006** — independent recovery verification + audit trail
 
-Canonical incident flow:
+Target end-to-end judge spine:
 
-`DETECT → INVESTIGATE → DELEGATE → SANDBOX → PROPOSE → APPROVE → EXECUTE → VERIFY → AUDIT`
+```text
+failure
+→ investigation
+→ sandbox reproduction
+→ bounded proposal
+→ human approval pause
+→ authorized execution
+→ independent verification
+→ verified recovery
+→ audit/guardrail
+```
 
-## TrueForge role
+Canonical lifecycle:
 
-TrueForge is the agent runtime, not a decorative wrapper.
+`DETECT → INVESTIGATE → SANDBOX → PROPOSE → APPROVE → EXECUTE → VERIFY → AUDIT`
 
-ROOK uses the official `@truefoundry/trueforge-sdk` and makes harness work visible in the command surface.
+## TrueForge is the runtime
 
-Current authentic/implemented boundaries include:
+ROOK uses the official `@truefoundry/trueforge-sdk` and retains harness evidence rather than treating TrueForge as branding around application logic.
 
-- session creation and streamed turns;
-- model/source event provenance;
-- owned MCP attachment by configured connector name;
-- positive `@read-only` tool selection;
-- bounded eager preload for the verified local model path;
-- official SDK folding of streamed model-message deltas before normalization;
-- retained MCP tool-call provenance;
-- retained `tool.response` evidence;
-- one-to-one call/response correlation;
-- fail-closed capability drift detection;
-- explicit public-truth projection for owned non-production demo evidence.
+Implemented boundaries include:
 
-Later milestones add sandbox execution, delegated subagents, approval checkpoints, bounded mutation, and recovery verification only when each capability has its own evidence gate.
+- real inline TrueForge session creation and streamed turns;
+- split observation/sandbox session authority;
+- official SDK folding of streamed `model.message.delta` events;
+- exact MCP provenance and tool-call IDs;
+- correlated `tool.response` evidence;
+- fail-closed event/capability drift handling;
+- owned-demo public-truth projection;
+- sandbox creation provenance;
+- public `truefoundry-system / exec` provenance;
+- sandbox call/response correlation;
+- provider-success/zero-exit/result validation;
+- separate OBSERVED and REPRODUCED truth states.
+
+Human approval, mutation, and recovery verification remain later milestones until authentically demonstrated.
 
 ## Visual system
 
-The canonical visual doctrine is **Citadel Watch**:
+The canonical design doctrine is **Citadel Watch**:
 
-- **70% Obsidian Watch** — product chassis, navigation, tables, logs;
-- **25% Citadel Glass** — signature hierarchy, evidence, approval, verification;
-- **5% Neon Bastion** — selective launch/social atmosphere.
+- **70% Obsidian Watch** — product chassis/navigation/logs;
+- **25% Citadel Glass** — evidence/approval/verification hierarchy;
+- **5% Neon Bastion** — selective atmosphere.
 
 Operational color semantics:
 
-- Cyan — telemetry and intelligence
-- Violet — AI orchestration
+- Cyan — telemetry/intelligence
+- Violet — AI orchestration and sandbox reproduction
 - Gold — human authority only
-- Red/Amber — incident and risk
+- Red/Amber — incident/risk
 - Green — evidence-backed recovery only
 
-`design/design-tokens.json` is the canonical token source. CI verifies generated token synchronization before tests/build.
+`design/design-tokens.json` is canonical; CI verifies generated token synchronization.
 
 ## Engineering workflow
 
-Every substantive change follows:
+Substantive work follows:
 
-`branch → scoped commits → tests/CI → pull request → Qodo review → resolve/dismiss findings → Qodo follow-up → Buddy Main exact-head verification → human merge`
+`branch → scoped commits → tests/CI → PR → Qodo review → fix/dismiss valid findings → Qodo follow-up → exact-head verification → human release/merge`
 
 No substantive direct pushes to `main`.
 
 See [`AGENTS.md`](./AGENTS.md), [`REVIEW.md`](./REVIEW.md), and [`docs/VERSIONING.md`](./docs/VERSIONING.md).
 
-## Qodo Code Review Evidence
-
-- **PR #2** — intentionally non-substantive Qodo workflow verification; closed without merge.
-- **PR #3** — v0.001 foundation. Qodo findings around authorization replay/binding, one-time claims, evidence-backed verification, and audit provenance became regression-tested invariants.
-- **PR #4** — Citadel Watch integration. Qodo found runtime token drift; the fix restored semantic design-token use.
-- **PR #5** — v0.002 TrueForge runtime. Qodo findings around provenance, terminal streams, local credential boundaries, malformed events, and truth vocabulary became code/test guardrails before authentic proof and merge.
-- **PR #7** — v0.003 read-only MCP investigation and release trail. The first Qodo Medium finding identified inadequate code-level demo labeling; it was accepted, fixed, regression-locked, and resolved. The final substantive review reported no remaining findings.
-
-The public PR discussion is the canonical review evidence trail. Screenshots supplement it but do not replace it.
-
 ## AI assistance disclosure
 
-AI coding and design assistants are used as development collaborators. Material implementation decisions, tests, Qodo findings, fixes, architecture choices, authentic capture evidence, release authority, and final merges remain human-governed.
+AI coding and design assistants are used as development collaborators. Architecture decisions, evidence contracts, tests, Qodo findings, fixes, authentic capture, release authority, and merges remain human-governed and publicly reviewable in the repository trail.
 
 ## Status
 
-`v0.003` is the current release milestone carried by PR #7. Its authentic proof, substantive CI/Qodo review, and human release-authority gates were satisfied before merge; the release metadata commit receives the final exact-head verification before entering `main`.
+**Released:** v0.003 on `main`.
+
+**In development:** v0.004 on PR #12. v0.004 remains pre-release until a real Daytona-backed split-authority TrueForge chain produces retained `OBSERVED + REPRODUCED EVIDENCE`, the final exact head clears review/CI, and a human authorizes release/merge.
