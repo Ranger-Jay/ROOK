@@ -1,9 +1,7 @@
 import { TrueForge, isEventDelta, mergeEventDelta, type TrueForgeApi } from '@truefoundry/trueforge-sdk'
 import { assertTrueForgeSdkBaseUrl } from './localProxy'
 import { ROOK_V003_MCP_ATTACHMENT } from './v003'
-import {
-  ROOK_V004_RUNTIME_GUARDRAILS,
-} from './v004'
+import { ROOK_V004_RUNTIME_GUARDRAILS } from './v004'
 import {
   HarnessProtocolError,
   type LocalTrueForgeTransportConfig,
@@ -16,6 +14,41 @@ export interface V004SplitAuthorityTransport {
   createReproductionSession(seed: TrueForgeSessionSeed): Promise<{ id: string }>
   streamTurn(sessionId: string, instruction: string): AsyncIterable<TrueForgeStreamItem>
 }
+
+export const buildV004ObservationAgentSpec = (seed: TrueForgeSessionSeed) => ({
+  model: { name: seed.modelName },
+  instructions: seed.instructions,
+  mcpServers: [{
+    name: ROOK_V003_MCP_ATTACHMENT.name,
+    enableTools: [...ROOK_V003_MCP_ATTACHMENT.enableTools],
+    preload: ROOK_V003_MCP_ATTACHMENT.preload,
+  }],
+  skills: [],
+  config: {
+    iterationLimit: ROOK_V004_RUNTIME_GUARDRAILS.iterationLimit,
+    sandbox: { enabled: false },
+    dynamicSubAgents: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.dynamicSubAgentsEnabled },
+    askUserQuestions: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.askUserQuestionsEnabled },
+    generativeUi: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.generativeUiEnabled },
+  },
+})
+
+export const buildV004ReproductionAgentSpec = (seed: TrueForgeSessionSeed) => ({
+  model: { name: seed.modelName },
+  instructions: seed.instructions,
+  // Intentionally no mcpServers property: this session has sandbox-only authority.
+  skills: [],
+  config: {
+    iterationLimit: ROOK_V004_RUNTIME_GUARDRAILS.iterationLimit,
+    sandbox: {
+      enabled: ROOK_V004_RUNTIME_GUARDRAILS.sandboxEnabled,
+      fileDownloads: ROOK_V004_RUNTIME_GUARDRAILS.sandboxFileDownloadsEnabled,
+    },
+    dynamicSubAgents: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.dynamicSubAgentsEnabled },
+    askUserQuestions: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.askUserQuestionsEnabled },
+    generativeUi: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.generativeUiEnabled },
+  },
+})
 
 /**
  * v0.004 deliberately separates authority across two inline TrueForge sessions.
@@ -38,49 +71,14 @@ export class V004SplitAuthoritySdkTransport implements V004SplitAuthorityTranspo
 
   async createObservationSession(seed: TrueForgeSessionSeed): Promise<{ id: string }> {
     const { data } = await this.client.sessions.create({
-      agent: {
-        spec: {
-          model: { name: seed.modelName },
-          instructions: seed.instructions,
-          mcpServers: [{
-            name: ROOK_V003_MCP_ATTACHMENT.name,
-            enableTools: [...ROOK_V003_MCP_ATTACHMENT.enableTools],
-            preload: ROOK_V003_MCP_ATTACHMENT.preload,
-          }],
-          skills: [],
-          config: {
-            iterationLimit: ROOK_V004_RUNTIME_GUARDRAILS.iterationLimit,
-            sandbox: { enabled: false },
-            dynamicSubAgents: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.dynamicSubAgentsEnabled },
-            askUserQuestions: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.askUserQuestionsEnabled },
-            generativeUi: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.generativeUiEnabled },
-          },
-        },
-      },
+      agent: { spec: buildV004ObservationAgentSpec(seed) },
     })
     return { id: data.id }
   }
 
   async createReproductionSession(seed: TrueForgeSessionSeed): Promise<{ id: string }> {
     const { data } = await this.client.sessions.create({
-      agent: {
-        spec: {
-          model: { name: seed.modelName },
-          instructions: seed.instructions,
-          // Intentionally no MCP servers: this session has sandbox-only authority.
-          skills: [],
-          config: {
-            iterationLimit: ROOK_V004_RUNTIME_GUARDRAILS.iterationLimit,
-            sandbox: {
-              enabled: ROOK_V004_RUNTIME_GUARDRAILS.sandboxEnabled,
-              fileDownloads: ROOK_V004_RUNTIME_GUARDRAILS.sandboxFileDownloadsEnabled,
-            },
-            dynamicSubAgents: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.dynamicSubAgentsEnabled },
-            askUserQuestions: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.askUserQuestionsEnabled },
-            generativeUi: { enabled: ROOK_V004_RUNTIME_GUARDRAILS.generativeUiEnabled },
-          },
-        },
-      },
+      agent: { spec: buildV004ReproductionAgentSpec(seed) },
     })
     return { id: data.id }
   }
