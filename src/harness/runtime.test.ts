@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { UnconfiguredHarnessAdapter } from './adapter'
-import { createHarnessAdapter, resolveHarnessRuntimeConfiguration } from './runtime'
+import {
+  createHarnessAdapter,
+  reinforceV004ProofInstruction,
+  resolveHarnessRuntimeConfiguration,
+} from './runtime'
 import { V004TrueForgeHarnessAdapter } from './v004'
 
 describe('resolveHarnessRuntimeConfiguration', () => {
@@ -50,6 +54,19 @@ describe('resolveHarnessRuntimeConfiguration', () => {
       VITE_TRUEFORGE_URL: 'http://localhost:8790',
       VITE_TRUEFORGE_MODEL: 'provider/model\nsecret-looking-line',
     })).toMatchObject({ mode: 'unconfigured', reason: expect.stringMatching(/model identifier/i) })
+  })
+})
+
+describe('v0.004 runtime prompt reinforcement', () => {
+  it('requires the model to continue from the observed MCP response into the bounded sandbox exec', () => {
+    const original = 'First call get_retry_pressure exactly once. Then call the TrueForge sandbox exec tool exactly once.'
+    const reinforced = reinforceV004ProofInstruction(original)
+
+    expect(reinforced).toContain('COMPLETE BOTH REQUIRED TOOL CALLS')
+    expect(reinforced).toContain('DO NOT STOP')
+    expect(reinforced).toContain('sandbox exec tool exactly once')
+    expect(reinforced).toContain('Do not end the turn until the sandbox exec response has returned.')
+    expect(reinforced).toContain(original)
   })
 })
 
