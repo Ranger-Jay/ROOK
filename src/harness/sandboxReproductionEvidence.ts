@@ -71,7 +71,9 @@ export function correlateSandboxReproductionEvidence(
     }
 
     if (event.type === 'sandbox.started') {
-      const pending = [...calls.entries()].filter(([callId]) => !sandboxByCall.has(callId))
+      const pending = [...calls.entries()].filter(
+        ([callId, call]) => !sandboxByCall.has(callId) && call.sessionId === event.sessionId,
+      )
       if (pending.length !== 1) continue
       const [callId] = pending[0]!
       sandboxByCall.set(callId, event)
@@ -82,7 +84,13 @@ export function correlateSandboxReproductionEvidence(
 
     const call = calls.get(event.callId)
     const sandbox = sandboxByCall.get(event.callId)
-    if (!call || !sandbox || call.threadId !== event.threadId) continue
+    if (
+      !call
+      || !sandbox
+      || call.threadId !== event.threadId
+      || call.sessionId !== sandbox.sessionId
+      || call.sessionId !== event.sessionId
+    ) continue
 
     pairs.push({
       callId: call.callId,
