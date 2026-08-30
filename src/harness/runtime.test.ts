@@ -4,7 +4,7 @@ import {
   createHarnessAdapter,
   resolveHarnessRuntimeConfiguration,
 } from './runtime'
-import { V004TwoPhaseTrueForgeHarnessAdapter } from './v004TwoPhase'
+import { V004SplitAuthorityTrueForgeHarnessAdapter } from './v004SplitAuthority'
 
 describe('resolveHarnessRuntimeConfiguration', () => {
   it('stays explicitly unconfigured when no live values are present', () => {
@@ -61,11 +61,11 @@ describe('createHarnessAdapter', () => {
     expect(createHarnessAdapter({ mode: 'unconfigured', reason: 'missing' })).toBeInstanceOf(UnconfiguredHarnessAdapter)
   })
 
-  it('constructs the two-phase v0.004 adapter from a validated local configuration', () => {
+  it('constructs the split-authority v0.004 adapter from a validated local configuration', () => {
     expect(createHarnessAdapter({
       mode: 'configured',
       baseUrl: 'http://127.0.0.1:8790',
       modelName: 'provider/model',
-    })).toBeInstanceOf(V004TwoPhaseTrueForgeHarnessAdapter)
+    })).toBeInstanceOf(V004SplitAuthorityTrueForgeHarnessAdapter)
   })
 })
