@@ -1,6 +1,14 @@
-# TrueForge v0.004 — authentic sandbox reproduction proof
+# TrueForge v0.004 — authentic split-authority sandbox reproduction proof
 
 ROOK v0.004 extends the released v0.003 read-only incident boundary with one deliberately bounded code-execution step inside a real TrueForge sandbox.
+
+The proof now uses **two distinct least-authority TrueForge sessions**. This is intentional:
+
+- the **observation session** has the owned read-only MCP connector and **sandbox disabled**;
+- only after ROOK validates the OBSERVED evidence does it create the **reproduction session**;
+- the reproduction session has **sandbox enabled and no MCP connector at all**.
+
+That split removes unnecessary cross-authority and prevents MCP discovery helpers from competing with TrueForge's managed sandbox `exec` tool in the constrained local model's reproduction context.
 
 Required chain:
 
@@ -11,16 +19,24 @@ owned non-production demo source :8792
 ROOK MCP :8791/mcp
         │ @read-only
         ▼
-TrueForge 0.1.3 + local model
-        │ get_retry_pressure
+TrueForge observation session + local model
+        │ sandbox disabled
+        │ get_retry_pressure exactly once
         ▼
 OBSERVED owned-demo evidence
-        │ exact values must match the reproduction contract
+        │ exact values must pass ROOK's projection gate
         ▼
-TrueForge sandbox / exec
-        │ Daytona sandbox
+ROOK authority handoff
+        │ only after OBSERVED validation
         ▼
-sandbox.created + correlated tool.response
+NEW TrueForge reproduction session + same local model
+        │ no MCP connector
+        │ sandbox enabled / downloads disabled
+        │ exec exactly once
+        ▼
+Daytona sandbox
+        │ sandbox.created
+        │ correlated zero-exit tool.response
         ▼
 REPRODUCED evidence
 ```
@@ -33,25 +49,35 @@ This milestone proves **reproduction**, not remediation and not recovery. Incide
 
 The v0.004 proof may succeed only when ROOK retains all of the following:
 
-1. exactly one `get_retry_pressure` call from `rook-inventory-retry-storm`;
-2. a matching read-only MCP `tool.response` on the same thread;
-3. an owned-demo payload that passes the OBSERVED projector;
-4. OBSERVED numeric values that exactly match the deterministic reproduction input contract;
-5. exactly one public TrueForge system-tool call identified as `truefoundry-system / exec`;
-6. the exact v0.004 `intent` and `command` arguments, with no `cwd`, `env`, or extra keys;
-7. exactly one real `sandbox.created` event;
-8. a matching sandbox `tool.response` on the same call/thread;
-9. Daytona provider success, exit code `0`, and the exact reproduction result schema/values;
-10. exactly one successful `turn.done` with zero required actions;
-11. no approval, MCP-auth pause, subagent, user-supplied tool response, or incident mutation activity.
+1. one TrueForge observation session with the configured `rook-inventory-retry-storm` MCP attachment and sandbox disabled;
+2. exactly one `get_retry_pressure` call from that owned read-only MCP source;
+3. a matching MCP `tool.response` on the same call/thread;
+4. an owned-demo payload that passes the OBSERVED projector;
+5. OBSERVED numeric values that exactly match the deterministic reproduction input contract;
+6. **no sandbox-authorized reproduction session created before steps 1–5 pass**;
+7. a second, distinct TrueForge reproduction session with sandbox enabled, file downloads disabled, and **no MCP attachment**;
+8. exactly one public TrueForge system-tool call identified as `truefoundry-system / exec` in the reproduction session;
+9. the exact v0.004 `intent` and `command` arguments, with no `cwd`, `env`, or extra keys;
+10. exactly one real `sandbox.created` event;
+11. a matching sandbox `tool.response` on the same call/thread;
+12. Daytona provider success, exit code `0`, and the exact reproduction result schema/values;
+13. exactly **two** successful `turn.done` events with zero required actions — one per TrueForge session;
+14. no approval, MCP-auth pause, subagent, user-supplied tool response, or incident mutation activity;
+15. no sandbox execution in the observation session and no MCP activity in the reproduction session.
 
 If any part is missing or drifts, ROOK fails closed and does not promote `REPRODUCED` evidence.
+
+### Why two TrueForge sessions
+
+TrueForge adds its sandbox as a managed tool set. Its deferred MCP discovery helpers are associated with attached user/MCP tool sets. ROOK therefore separates the proof by authority instead of asking a small local model to choose among observation and execution capabilities in one context.
+
+This is not a simulated handoff. Both sessions are real TrueForge sessions. The observation is obtained through TrueForge's real MCP path; the reproduction is executed through TrueForge's real sandbox `exec` path backed by Daytona.
 
 ### Execution-policy distinction
 
 TrueForge owns execution of its built-in sandbox tool. ROOK does **not** intercept a model-issued shell command before TrueForge executes it in Daytona.
 
-ROOK therefore treats its exact-command check as a **public-evidence acceptance gate**, not as a pre-execution shell firewall. A different command cannot become valid v0.004 evidence, but the TrueForge sandbox remains the execution isolation boundary.
+ROOK therefore treats its exact-command check as a **public-evidence acceptance gate**, not as a pre-execution shell firewall. A different command cannot become valid v0.004 evidence, but the TrueForge/Daytona sandbox remains the execution isolation boundary.
 
 ## Pinned TrueForge 0.1.3 sandbox facts
 
@@ -71,7 +97,7 @@ In this release:
 - a newly created sandbox emits `sandbox.created`;
 - execution results return through ordinary `tool.response` evidence.
 
-ROOK explicitly sets sandbox file downloads to `false` for v0.004.
+ROOK explicitly sets sandbox file downloads to `false` for the reproduction session. The observation session explicitly sets sandbox `enabled: false`.
 
 ## Daytona account prerequisite
 
@@ -79,7 +105,7 @@ Create a Daytona API key in the Daytona Dashboard. The key must be able to creat
 
 **Never paste the Daytona key into GitHub, a ROOK file, a `VITE_*` variable, a screenshot, or chat.**
 
-The first proof attempt uses Daytona's official default snapshot:
+The proof uses Daytona's official default snapshot:
 
 ```text
 daytona-small
@@ -157,7 +183,7 @@ url:  http://127.0.0.1:8791/mcp
 auth: not_required
 ```
 
-TrueForge 0.1.3 does not expose the SDK connector-tools listing route used by some SDK builds. The setup helper intentionally does not depend on that missing route.
+The connector is attached only to the observation session. The reproduction session intentionally omits `mcpServers`.
 
 ## 4. Load the Daytona key without echoing it
 
@@ -222,16 +248,21 @@ Open the local ROOK UI and choose:
 Run bounded sandbox reproduction
 ```
 
-The shipped proof instruction requires this sequence:
+One click orchestrates this split-authority sequence:
 
 ```text
-get_retry_pressure exactly once
-→ OBSERVED owned-demo response
-→ exact values pass reproduction-input gate
+TrueForge observation session
+  sandbox disabled
+  get_retry_pressure exactly once
+→ correlated OBSERVED owned-demo response
+→ exact values pass ROOK's reproduction-input gate
+→ create a distinct TrueForge reproduction session
+  no MCP attachment
+  sandbox enabled
 → TrueForge sandbox exec exactly once
 → sandbox.created
 → successful zero-exit tool.response
-→ exactly one successful turn.done
+→ second successful turn.done
 ```
 
 A successful public surface must display:
@@ -247,7 +278,7 @@ OBSERVED · OWNED DEMO MCP
 REPRODUCED · TRUEFORGE SANDBOX
 ```
 
-The REPRODUCED card must display a real sandbox ID plus call, sandbox-event, and response-event provenance.
+The surface also exposes the separate observation and reproduction TrueForge session IDs. The REPRODUCED card must display a real sandbox ID plus call, sandbox-event, and response-event provenance.
 
 ## 8. Authentic evidence to freeze
 
@@ -255,15 +286,18 @@ Retain, outside the repository until sanitized:
 
 - exact ROOK branch head SHA;
 - TrueForge version and local model identifier;
-- real TrueForge session ID;
-- real turn ID;
+- real **observation TrueForge session ID**;
+- real **reproduction TrueForge session ID**;
+- one real turn ID from each session;
 - the `get_retry_pressure` call event and correlated response event;
+- evidence that the observation session had sandbox disabled;
+- evidence that the reproduction session had no MCP connector and sandbox enabled;
 - the real `sandbox.created` event and sandbox ID;
 - the `truefoundry-system / exec` call event;
 - the correlated sandbox `tool.response`;
 - provider success / exit code `0` reproduction result;
-- the single successful terminal `turn.done`;
-- screenshots of the two evidence cards with no secrets or private account information.
+- both successful terminal `turn.done` events;
+- screenshots of the two evidence cards and split session IDs with no secrets or private account information.
 
 Do not commit raw machine-environment dumps or credential-bearing screenshots.
 
@@ -274,8 +308,11 @@ The v0.004 proof is invalid if any of these occur:
 - missing or duplicate `get_retry_pressure` call;
 - owned-demo projector rejection;
 - OBSERVED numeric values differ from the deterministic reproduction input;
-- sandbox exec before the MCP observation is correlated;
-- system tool other than `exec`;
+- a sandbox-authorized reproduction session is created before the OBSERVED contract passes;
+- observation and reproduction use the same TrueForge session ID;
+- sandbox execution occurs in the read-only observation session;
+- MCP activity occurs in the sandbox-only reproduction session;
+- system tool other than `exec` in the reproduction evidence path;
 - wrong exec intent/command or any extra `cwd` / `env` / key;
 - missing/duplicate `sandbox.created`;
 - sandbox response without the retained exec call;
@@ -284,9 +321,9 @@ The v0.004 proof is invalid if any of these occur:
 - non-zero sandbox exit code;
 - wrong reproduction schema or numeric result;
 - approval, auth pause, subagent, client tool response, or mutation activity;
-- required actions at terminal state;
+- required actions at either terminal state;
 - terminal state other than `done`;
-- missing/duplicate terminal turn;
+- missing/duplicate terminal turn in either session;
 - UI lacks either the OBSERVED or REPRODUCED projection.
 
 ## 10. Daytona troubleshooting rule
@@ -307,8 +344,8 @@ Passing tests or a mocked/scripted sandbox sequence is not enough.
 
 v0.004 may move from `v0.004-dev` to `v0.004` only after:
 
-1. the real Daytona-backed chain passes;
-2. authentic session/turn/sandbox evidence is frozen and sanitized;
+1. the real Daytona-backed split-authority chain passes;
+2. authentic two-session/turn/sandbox evidence is frozen and sanitized;
 3. the exact final branch head passes the full repository gate;
 4. Qodo reports no unresolved valid High/Medium findings;
 5. the PR text/README accurately describe what was actually proven;
