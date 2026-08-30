@@ -54,7 +54,7 @@ const mcpCall = () => ({
   }],
 })
 
-const retryPressurePayload = (attemptsPerMinute = ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute) => ({
+const retryPressurePayload = (attemptsPerMinute: number = ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute) => ({
   source: {
     system: 'rook-owned-demo-source',
     scenarioId: 'inventory-retry-storm-v1',
@@ -76,7 +76,7 @@ const retryPressurePayload = (attemptsPerMinute = ROOK_V004_REPRODUCTION_INPUT.a
   },
 })
 
-const mcpResponse = (attemptsPerMinute = ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute) => ({
+const mcpResponse = (attemptsPerMinute: number = ROOK_V004_REPRODUCTION_INPUT.attemptsPerMinute) => ({
   id: 'evt_mcp_response',
   type: 'tool.response',
   threadId: 'main',
