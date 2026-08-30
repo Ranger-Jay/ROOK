@@ -5,11 +5,6 @@ import {
   evidenceEventLabel,
   shouldPromoteReproducedEvidence,
 } from './TrueForgeProof'
-import {
-  buildV004SandboxInstructions,
-  ROOK_V004_SANDBOX_COMMAND,
-  ROOK_V004_SANDBOX_INTENT,
-} from './v004'
 
 describe('TrueForge v0.004 proof truth boundary', () => {
   it('shows the authentic TrueForge terminal event name in the evidence row', () => {
@@ -26,27 +21,11 @@ describe('TrueForge v0.004 proof truth boundary', () => {
     expect(evidenceEventLabel(event)).toBe('turn.done')
   })
 
-  it('requires OBSERVED MCP evidence followed by the exact bounded sandbox reproduction', () => {
-    expect(V004_PROOF_INSTRUCTION).toBe(buildV004SandboxInstructions({
-      incidentId: 'INC-2048',
-      title: 'Inventory Retry Storm',
-      objective: 'Observe retry pressure from the owned non-production demo source, then reproduce the arithmetic in an isolated TrueForge sandbox without incident mutation.',
-    }))
-    expect(V004_PROOF_INSTRUCTION).toContain('First call get_retry_pressure exactly once')
-    expect(V004_PROOF_INSTRUCTION).toContain('OBSERVED owned-demo evidence')
-    expect(V004_PROOF_INSTRUCTION).toContain('sandbox exec tool exactly once')
-    expect(V004_PROOF_INSTRUCTION).toContain(ROOK_V004_SANDBOX_INTENT)
-    expect(V004_PROOF_INSTRUCTION).toContain(ROOK_V004_SANDBOX_COMMAND)
-    expect(V004_PROOF_INSTRUCTION).toContain('sandbox exec arguments JSON must be exactly')
-    expect(V004_PROOF_INSTRUCTION).toContain(JSON.stringify({
-      intent: ROOK_V004_SANDBOX_INTENT,
-      command: ROOK_V004_SANDBOX_COMMAND,
-    }))
-    expect(V004_PROOF_INSTRUCTION).toContain('OMIT cwd entirely. OMIT env entirely.')
-    expect(V004_PROOF_INSTRUCTION).toContain('Never serialize optional sandbox fields as null.')
-    expect(V004_PROOF_INSTRUCTION).toContain('REPRODUCED evidence')
-    expect(V004_PROOF_INSTRUCTION).toContain('not production observation, applied remediation, or verified recovery')
-    expect(V004_PROOF_INSTRUCTION).toContain('Do not supply files, network requests')
+  it('uses a single high-level UI instruction while the adapter owns the split-authority phase prompts', () => {
+    expect(V004_PROOF_INSTRUCTION).toBe('Run the split-authority v0.004 observation and bounded sandbox reproduction proof.')
+    expect(V004_PROOF_INSTRUCTION).toContain('split-authority')
+    expect(V004_PROOF_INSTRUCTION).toContain('observation')
+    expect(V004_PROOF_INSTRUCTION).toContain('sandbox reproduction')
   })
 
   it('promotes the REPRODUCED claim card only after the whole proof reaches its final reproduced state', () => {
