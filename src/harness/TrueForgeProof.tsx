@@ -3,7 +3,6 @@ import type { HarnessEvent, IncidentSession } from './adapter'
 import { selectLatestObservedRetryPressure } from './liveIncidentEvidence'
 import { createHarnessAdapter, resolveHarnessRuntimeConfiguration } from './runtime'
 import { selectLatestReproducedRetryPressure } from './sandboxReproductionEvidence'
-import { buildV004SandboxInstructions } from './v004'
 import './trueforge-proof.css'
 import './v004-proof.css'
 
@@ -15,7 +14,7 @@ const incident = {
   objective: 'Observe retry pressure from the owned non-production demo source, then reproduce the arithmetic in an isolated TrueForge sandbox without incident mutation.',
 } as const
 
-export const V004_PROOF_INSTRUCTION = buildV004SandboxInstructions(incident)
+export const V004_PROOF_INSTRUCTION = 'Run the split-authority v0.004 observation and bounded sandbox reproduction proof.'
 
 const statusCopy: Record<ProofStatus, { label: string; detail: string }> = {
   unconfigured: {
@@ -24,26 +23,26 @@ const statusCopy: Record<ProofStatus, { label: string; detail: string }> = {
   },
   idle: {
     label: 'V0.004 CLIENT READY',
-    detail: 'The local TrueForge origin/model are configured. Sandbox availability is not assumed; it is proven only by a successful retained sandbox.created → exec → response chain.',
+    detail: 'ROOK will use separate least-authority TrueForge sessions: read-only MCP observation first, then — only after that evidence passes — a sandbox-only reproduction session.',
   },
   connecting: {
-    label: 'RUNNING BOUNDED REPRODUCTION',
-    detail: 'Waiting for OBSERVED read-only MCP evidence followed by a real TrueForge sandbox creation, exact exec, matching response, and one successful terminal turn.',
+    label: 'RUNNING SPLIT-AUTHORITY PROOF',
+    detail: 'Waiting for one OBSERVED read-only MCP turn, the evidence gate, then one separate sandbox-only TrueForge turn with sandbox.created → exact exec → matching response.',
   },
   reproduced: {
     label: 'OBSERVED + REPRODUCED EVIDENCE',
-    detail: 'ROOK retained both the owned-demo read-only observation and the bounded TrueForge sandbox reproduction. Reproduction is not remediation and is not recovery verification.',
+    detail: 'ROOK retained the owned-demo observation and a separate bounded TrueForge sandbox reproduction. The observer could not execute; the reproducer could not access the incident source.',
   },
   failed: {
     label: 'V0.004 EVIDENCE GATE FAILED',
-    detail: 'The retained chain did not satisfy the v0.004 observation-plus-reproduction contract. ROOK is not promoting this attempt as reproduced evidence.',
+    detail: 'The retained chain did not satisfy the split-authority observation-plus-reproduction contract. ROOK is not promoting this attempt as reproduced evidence.',
   },
 }
 
 const eventDetail = (event: HarnessEvent): string => {
   switch (event.type) {
     case 'turn.started':
-      return `turn ${event.turnId}`
+      return `session ${event.sessionId} · turn ${event.turnId}`
     case 'agent.message.delta':
       return event.text
     case 'mcp.tool.called':
@@ -51,7 +50,7 @@ const eventDetail = (event: HarnessEvent): string => {
     case 'mcp.tool.returned':
       return `correlated MCP response · call ${event.callId}`
     case 'turn.completed':
-      return `terminal ${event.status} · required actions ${event.requiredActionCount}`
+      return `session ${event.sessionId} · terminal ${event.status} · required actions ${event.requiredActionCount}`
     case 'error':
       return event.message
     case 'tool.returned':
@@ -118,9 +117,17 @@ export default function TrueForgeProof() {
         unsubscribe()
       }
 
-      const terminal = [...turnEvents].reverse().find((event) => event.type === 'turn.completed')
-      if (!terminal || terminal.type !== 'turn.completed') {
-        throw new Error('No terminal TrueForge turn evidence was observed.')
+      const terminals = turnEvents.filter((event) => event.type === 'turn.completed')
+      if (terminals.length !== 2) {
+        throw new Error(`Split-authority proof requires exactly two successful TrueForge terminal turns; observed ${terminals.length}.`)
+      }
+      const turnSessionIds = new Set(
+        turnEvents
+          .filter((event): event is Extract<HarnessEvent, { type: 'turn.started' }> => event.type === 'turn.started')
+          .map((event) => event.sessionId),
+      )
+      if (turnSessionIds.size !== 2) {
+        throw new Error(`Split-authority proof requires two distinct TrueForge session IDs; observed ${turnSessionIds.size}.`)
       }
       if (!selectLatestObservedRetryPressure(turnEvents)) {
         throw new Error('No evidence-backed retry-pressure OBSERVED claim passed the owned-demo projection gate.')
@@ -137,11 +144,16 @@ export default function TrueForgeProof() {
   }
 
   const copy = statusCopy[status]
-  const recentEvents = events.slice(-12)
+  const recentEvents = events.slice(-14)
   const retryPressure = selectLatestObservedRetryPressure(events)
   const reproduction = shouldPromoteReproducedEvidence(status)
     ? selectLatestReproducedRetryPressure(events)
     : null
+  const reproductionSessionId = events.find((event) => event.type === 'sandbox.exec.called')?.sessionId
+    ?? events
+      .filter((event): event is Extract<HarnessEvent, { type: 'turn.started' }> => event.type === 'turn.started')
+      .map((event) => event.sessionId)
+      .find((sessionId) => sessionId !== session?.sessionId)
 
   return (
     <section className={`harness-proof proof-${status}`} aria-labelledby="trueforge-proof-title">
@@ -161,9 +173,9 @@ export default function TrueForgeProof() {
             <dl className="harness-config">
               <div><dt>Origin</dt><dd>{configuration.baseUrl}</dd></div>
               <div><dt>Model</dt><dd>{configuration.modelName}</dd></div>
-              <div><dt>MCP</dt><dd>rook-inventory-retry-storm · @read-only</dd></div>
-              <div><dt>Sandbox</dt><dd>TrueForge exec · file downloads disabled</dd></div>
-              <div><dt>Authority</dt><dd>read-only incident source · isolated reproduction · no incident mutation</dd></div>
+              <div><dt>Observe</dt><dd>read-only MCP session · rook-inventory-retry-storm · sandbox off</dd></div>
+              <div><dt>Reproduce</dt><dd>sandbox-only TrueForge session · no MCP · file downloads disabled</dd></div>
+              <div><dt>Authority</dt><dd>split authority · validate before handoff · no incident mutation</dd></div>
             </dl>
           ) : (
             <div className="harness-config-warning">
@@ -180,7 +192,7 @@ export default function TrueForgeProof() {
             onClick={() => void verifyConnection()}
           >
             {status === 'connecting'
-              ? 'Running bounded reproduction…'
+              ? 'Running split-authority proof…'
               : status === 'reproduced'
                 ? 'Run a new bounded reproduction'
                 : 'Run bounded sandbox reproduction'}
@@ -242,10 +254,17 @@ export default function TrueForgeProof() {
           {session ? (
             <>
               <div className="session-observation">
-                <span>SESSION RESPONSE</span>
+                <span>OBSERVATION SESSION RESPONSE</span>
                 <strong>{session.sessionId}</strong>
-                <small>{session.observation.source} · observed {session.observation.observedAt}</small>
+                <small>{session.observation.source} · read-only MCP · sandbox disabled · observed {session.observation.observedAt}</small>
               </div>
+              {reproductionSessionId && (
+                <div className="session-observation">
+                  <span>REPRODUCTION SESSION</span>
+                  <strong>{reproductionSessionId}</strong>
+                  <small>created only after the OBSERVED gate · sandbox enabled · no MCP connector</small>
+                </div>
+              )}
               <ol className="harness-event-list">
                 {recentEvents.map((event, index) => (
                   <li key={`${event.sourceEventId}-${event.sequence ?? index}`}>
