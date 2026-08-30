@@ -98,6 +98,18 @@ describe('sandbox reproduction public-truth projection', () => {
     expect(selectLatestReproducedRetryPressure(events)).toBeNull()
   })
 
+  it('rejects sandbox.created and response evidence from a different TrueForge session', () => {
+    const mismatchedSandbox = validEvents()
+    const sandbox = mismatchedSandbox[1] as Extract<HarnessEvent, { type: 'sandbox.started' }>
+    sandbox.sessionId = 'sess_other'
+    expect(selectLatestReproducedRetryPressure(mismatchedSandbox)).toBeNull()
+
+    const mismatchedResponse = validEvents()
+    const returned = mismatchedResponse[2] as Extract<HarnessEvent, { type: 'sandbox.exec.returned' }>
+    returned.sessionId = 'sess_other'
+    expect(selectLatestReproducedRetryPressure(mismatchedResponse)).toBeNull()
+  })
+
   it('rejects command drift even when the returned numbers look correct', () => {
     const events = validEvents()
     const call = events[0] as Extract<HarnessEvent, { type: 'sandbox.exec.called' }>
