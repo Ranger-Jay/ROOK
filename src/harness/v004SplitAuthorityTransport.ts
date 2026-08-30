@@ -15,6 +15,15 @@ export interface V004SplitAuthorityTransport {
   streamTurn(sessionId: string, instruction: string): AsyncIterable<TrueForgeStreamItem>
 }
 
+export const assertDistinctV004AuthoritySessions = (observationSessionId: string, reproductionSessionId: string): void => {
+  if (!observationSessionId.trim() || !reproductionSessionId.trim()) {
+    throw new HarnessProtocolError('v0.004 split-authority sessions require non-empty TrueForge session IDs.')
+  }
+  if (observationSessionId === reproductionSessionId) {
+    throw new HarnessProtocolError('v0.004 split-authority handoff requires a distinct reproduction TrueForge session.')
+  }
+}
+
 export const buildV004ObservationAgentSpec = (seed: TrueForgeSessionSeed) => ({
   model: { name: seed.modelName },
   instructions: seed.instructions,
@@ -61,6 +70,7 @@ export const buildV004ReproductionAgentSpec = (seed: TrueForgeSessionSeed) => ({
  */
 export class V004SplitAuthoritySdkTransport implements V004SplitAuthorityTransport {
   private readonly client: TrueForge
+  private observationSessionId: string | undefined
 
   constructor(config: LocalTrueForgeTransportConfig) {
     this.client = new TrueForge({
@@ -73,13 +83,18 @@ export class V004SplitAuthoritySdkTransport implements V004SplitAuthorityTranspo
     const { data } = await this.client.sessions.create({
       agent: { spec: buildV004ObservationAgentSpec(seed) },
     })
+    this.observationSessionId = data.id
     return { id: data.id }
   }
 
   async createReproductionSession(seed: TrueForgeSessionSeed): Promise<{ id: string }> {
+    if (!this.observationSessionId) {
+      throw new HarnessProtocolError('v0.004 cannot create a reproduction session before an observation session exists.')
+    }
     const { data } = await this.client.sessions.create({
       agent: { spec: buildV004ReproductionAgentSpec(seed) },
     })
+    assertDistinctV004AuthoritySessions(this.observationSessionId, data.id)
     return { id: data.id }
   }
 
