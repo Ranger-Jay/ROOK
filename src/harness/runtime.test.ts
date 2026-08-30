@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { UnconfiguredHarnessAdapter } from './adapter'
 import {
   createHarnessAdapter,
-  reinforceV004ProofInstruction,
   resolveHarnessRuntimeConfiguration,
 } from './runtime'
-import { V004TrueForgeHarnessAdapter } from './v004'
+import { V004TwoPhaseTrueForgeHarnessAdapter } from './v004TwoPhase'
 
 describe('resolveHarnessRuntimeConfiguration', () => {
   it('stays explicitly unconfigured when no live values are present', () => {
@@ -57,31 +56,16 @@ describe('resolveHarnessRuntimeConfiguration', () => {
   })
 })
 
-describe('v0.004 runtime prompt reinforcement', () => {
-  it('requires the model to continue directly from the observed MCP response into the bounded sandbox exec', () => {
-    const original = 'First call get_retry_pressure exactly once. Then call the TrueForge sandbox exec tool exactly once.'
-    const reinforced = reinforceV004ProofInstruction(original)
-
-    expect(reinforced).toContain('COMPLETE BOTH REQUIRED TOOL CALLS')
-    expect(reinforced).toContain('DO NOT STOP')
-    expect(reinforced).toContain('sandbox exec tool is already preloaded')
-    expect(reinforced).toContain('Do NOT call list_tools, get_tool_info, get_tool_output_schema, or call_tool')
-    expect(reinforced).toContain('NEXT tool call MUST be exec')
-    expect(reinforced).toContain('Do not end the turn until the sandbox exec response has returned.')
-    expect(reinforced).toContain(original)
-  })
-})
-
 describe('createHarnessAdapter', () => {
   it('returns the explicit fail-closed adapter when configuration is absent', () => {
     expect(createHarnessAdapter({ mode: 'unconfigured', reason: 'missing' })).toBeInstanceOf(UnconfiguredHarnessAdapter)
   })
 
-  it('constructs the v0.004 sandbox-reproduction adapter only from a validated local configuration', () => {
+  it('constructs the two-phase v0.004 adapter from a validated local configuration', () => {
     expect(createHarnessAdapter({
       mode: 'configured',
       baseUrl: 'http://127.0.0.1:8790',
       modelName: 'provider/model',
-    })).toBeInstanceOf(V004TrueForgeHarnessAdapter)
+    })).toBeInstanceOf(V004TwoPhaseTrueForgeHarnessAdapter)
   })
 })
