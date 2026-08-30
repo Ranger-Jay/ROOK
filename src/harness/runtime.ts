@@ -42,7 +42,9 @@ const validateModelName = (modelName: string): string => {
 export const reinforceV004ProofInstruction = (instruction: string): string => [
   'COMPLETE BOTH REQUIRED TOOL CALLS BEFORE ENDING THIS TURN.',
   'After the get_retry_pressure tool response, DO NOT STOP, summarize, or answer with prose.',
-  'Immediately continue by calling the TrueForge sandbox exec tool exactly once using the exact intent and command arguments specified below.',
+  'The required TrueForge sandbox exec tool is already preloaded and directly callable as exec.',
+  'Do NOT call list_tools, get_tool_info, get_tool_output_schema, or call_tool. Those deferred discovery helpers are not part of this proof.',
+  'After get_retry_pressure returns, your NEXT tool call MUST be exec using the exact intent and command arguments specified below.',
   'Do not end the turn until the sandbox exec response has returned.',
   instruction,
 ].join('\n')
