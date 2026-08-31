@@ -289,7 +289,7 @@ The public PR discussion is the canonical review evidence trail. Screenshots sup
 
 ## AI assistance disclosure
 
-AI coding and design assistants are used as development collaborators. Material implementation decisions, tests, Qodo findings, fixes, architecture choices, authentic capture evidence, release authority, and final merges remain human-governed.
+AI assistants were used as development collaborators, testing and code review. Coding, material implementation decisions, Qodo findings, fixes, architecture choices, authentic capture evidence, release authority, and final merges remain human-governed.
 
 ## Status
 
